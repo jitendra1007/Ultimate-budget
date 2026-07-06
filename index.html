@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Ultimate Budget</title>
+    <title>Settings | BudgetPlanner</title>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />
@@ -13580,17 +13580,8 @@
         function clearFilters() {
             document.getElementById("filter-search").value = "";
 
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = now.getMonth();
-            const firstDay = new Date(y, m, 1);
-            const lastDay = new Date(y, m + 1, 0);
-
-            const firstDayStr = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
-            const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-
-            document.getElementById("filter-start-date").value = firstDayStr;
-            document.getElementById("filter-end-date").value = lastDayStr;
+            document.getElementById("filter-start-date").value = "";
+            document.getElementById("filter-end-date").value = "";
             updateFilterDateDisplay('start');
             updateFilterDateDisplay('end');
 
@@ -23610,7 +23601,7 @@
 
                         // 2. Compare Local Envelopes vs Cloud Envelopes item-by-item
                         let localHasNewerEdits = false;
-                        databaseArray.forEach(localItem => {
+                        (window.databaseArray || []).forEach(localItem => {
                             const cloudItem = mergedMap.get(localItem.id);
                             // If local item is newer, or it doesn't exist in the cloud yet, local wins
                             if (!cloudItem || (localItem.updatedAt > (cloudItem.updatedAt || 0))) {
@@ -23671,7 +23662,7 @@
                 }
 
                 // Upload the generic database array
-                const payload = { records: databaseArray };
+                const payload = { records: window.databaseArray || [] };
 
                 await gapi.client.request({
                     path: `https://www.googleapis.com/upload/drive/v3/files/${cloudFileId}?uploadType=media`,
