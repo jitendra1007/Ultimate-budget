@@ -12740,83 +12740,50 @@
         }
 
         function triggerImport(input) {
+            if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
-            if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function (e) {
                 try {
-                    const parsed = JSON.parse(e.target.result);
-
-                    if (!parsed || typeof parsed !== "object") {
-                        throw new Error("Invalid structure: Database must be an object.");
-                    }
-                    if (parsed.categories === undefined || typeof parsed.categories !== "object") {
-                        throw new Error("Invalid structure: missing categories.");
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) {
+                        throw new Error("Invalid format. Expected an array of Data Envelopes.");
                     }
 
-                    const keys = Object.keys(DEFAULT_STATE.categories);
-                    for (let key of keys) {
-                        if (parsed.categories[key] !== undefined && !Array.isArray(parsed.categories[key])) {
-                            throw new Error(`Category "${key}" must be a list of elements.`);
-                        }
+                    if (importedData.length > 0 && (!importedData[0].id || !importedData[0].table)) {
+                        throw new Error("Invalid format. Missing required envelope fields.");
                     }
 
-                    if (parsed.transactions !== undefined && !Array.isArray(parsed.transactions)) {
-                        throw new Error(`Transactions database must be an array.`);
+                    const timestamp = Date.now();
+                    
+                    // Set updated timestamps on all imported records
+                    const updatedImported = importedData.map(item => Object.assign({}, item, { updatedAt: timestamp }));
+                    const importedIds = new Set(updatedImported.map(item => item.id));
+
+                    // Soft-delete items that exist locally but are missing from the imported backup
+                    // (Matching boilerplate.html sync logic so they are deleted on Google Drive during next sync)
+                    const oldDataDeleted = (window.databaseArray || [])
+                        .filter(item => !importedIds.has(item.id) && !item.deleted)
+                        .map(item => Object.assign({}, item, { deleted: true, updatedAt: timestamp }));
+
+                    window.databaseArray = [...updatedImported, ...oldDataDeleted];
+                    updateDataState(window.databaseArray, true);
+                    
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
                     }
 
-                    appState = {
-                        name: parsed.name !== undefined ? String(parsed.name) : DEFAULT_STATE.name,
-                        currency: parsed.currency !== undefined ? String(parsed.currency) : DEFAULT_STATE.currency,
-                        initialBalance: parsed.initialBalance !== undefined ? Number(parsed.initialBalance) : DEFAULT_STATE.initialBalance,
-                        budgetingMethod: parsed.budgetingMethod !== undefined ? String(parsed.budgetingMethod) : DEFAULT_STATE.budgetingMethod,
-                        accountStartDate: parsed.accountStartDate !== undefined ? parsed.accountStartDate : DEFAULT_STATE.accountStartDate,
-                        accountStartBalances: parsed.accountStartBalances !== undefined ? parsed.accountStartBalances : { ...DEFAULT_STATE.accountStartBalances },
-                        accountIcons: parsed.accountIcons !== undefined ? parsed.accountIcons : { ...DEFAULT_STATE.accountIcons },
-                        categories: { ...DEFAULT_STATE.categories, ...parsed.categories },
-                        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [...DEFAULT_STATE.transactions],
-                        budgetPeriods: Array.isArray(parsed.budgetPeriods) ? parsed.budgetPeriods : [],
-                        savingsGoals: parsed.savingsGoals !== undefined ? parsed.savingsGoals : {},
-                        fiftyNeedsTarget: parsed.fiftyNeedsTarget !== undefined ? Number(parsed.fiftyNeedsTarget) : 50,
-                        fiftyWantsTarget: parsed.fiftyWantsTarget !== undefined ? Number(parsed.fiftyWantsTarget) : 30,
-                        fiftySavingsTarget: parsed.fiftySavingsTarget !== undefined ? Number(parsed.fiftySavingsTarget) : 20,
-                        fiftyMapping: parsed.fiftyMapping !== undefined ? parsed.fiftyMapping : {},
-                        fiftyActivePeriodId: parsed.fiftyActivePeriodId !== undefined ? parsed.fiftyActivePeriodId : null,
-                        annualStartMonth: parsed.annualStartMonth !== undefined ? String(parsed.annualStartMonth) : DEFAULT_STATE.annualStartMonth,
-                        noSpendExclusions: parsed.noSpendExclusions !== undefined ? parsed.noSpendExclusions : ["Rent", "Electricity", "Netflix", "Spotify", "Student Loan"],
-                        noSpendGoals: parsed.noSpendGoals !== undefined ? parsed.noSpendGoals : {},
-                        noSpendPersonalBest: parsed.noSpendPersonalBest !== undefined ? Number(parsed.noSpendPersonalBest) : 0,
-                        reviewNotifSent: parsed.reviewNotifSent !== undefined ? Number(parsed.reviewNotifSent) : 0,
-                        debts: parsed.debts !== undefined ? parsed.debts : [],
-                        debtStrategy: parsed.debtStrategy !== undefined ? parsed.debtStrategy : "snowball",
-                        debtExtraPayment: parsed.debtExtraPayment !== undefined ? Number(parsed.debtExtraPayment) : 0,
-                        debtStartMonth: parsed.debtStartMonth !== undefined ? String(parsed.debtStartMonth) : DEFAULT_STATE.debtStartMonth,
-                        debtCustomPriority: parsed.debtCustomPriority !== undefined ? parsed.debtCustomPriority : [],
-                        debtAdjustments: parsed.debtAdjustments !== undefined ? parsed.debtAdjustments : {},
-                        netWorthData: parsed.netWorthData !== undefined ? parsed.netWorthData : { activeYear: 2026, items: [] },
-                        notifications: parsed.notifications !== undefined ? parsed.notifications : { active: [], archived: [] },
-                        cleared: true
-                    };
-                    saveStateToLocalStorage();
                     showToast("Database imported successfully! Reloading...", "success");
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
-
                 } catch (err) {
-                    console.error("Validation error:", err);
-                    showToast(`Import rejected: ${err.message}`, "error");
+                    console.error("Import failed", err);
+                    showToast("Import failed: " + err.message, "error");
                 } finally {
                     input.value = "";
                 }
             };
-
-            reader.onerror = function () {
-                showToast("File reading error.", "error");
-                input.value = "";
-            };
-
             reader.readAsText(file);
         }
 
@@ -23315,43 +23282,7 @@
             showToast("Database exported successfully!");
         }
 
-        function triggerImport(input) {
-            if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (!Array.isArray(importedData)) {
-                        throw new Error("Invalid format. Expected an array of Data Envelopes.");
-                    }
 
-                    if (importedData.length > 0 && (!importedData[0].id || !importedData[0].table)) {
-                        throw new Error("Invalid format. Missing required envelope fields.");
-                    }
-
-                    const timestamp = Date.now();
-                    importedData.forEach(item => {
-                        item.updatedAt = timestamp;
-                    });
-
-                    window.databaseArray = importedData;
-                    updateDataState(window.databaseArray, true);
-                    scheduleCloudSync();
-
-                    buildAppStateFromDatabase();
-                    if (typeof initUI === 'function') initUI();
-                    if (typeof renderSettingsView === 'function') renderSettingsView();
-
-                    showToast("Data imported successfully", "success");
-                } catch (err) {
-                    console.error("Import failed", err);
-                    showToast("Import failed: " + err.message, "error");
-                }
-                input.value = "";
-            };
-            reader.readAsText(file);
-        }
 
         function clearAllData() {
             if (confirm("Are you sure you want to clear all user data? This cannot be undone.")) {
