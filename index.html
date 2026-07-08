@@ -23398,7 +23398,17 @@
                 if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
                 if (typeof updateAccountsView === 'function') updateAccountsView();
 
-                const activeTab = (typeof budgetState !== 'undefined' && budgetState.activeTab) ? budgetState.activeTab : 'settings';
+                // Determine correct active tab from sessionStorage or DOM classes rather than defaulting to budgets
+                let activeTab = sessionStorage.getItem('budget_tracker_active_tab');
+                if (!activeTab) {
+                    const views = ['settings', 'transactions', 'accounts', 'budgets', 'calendar', '503020', 'dashboard', 'savings', 'debt', 'networth', 'notifications'];
+                    const activeView = views.find(v => {
+                        const el = document.getElementById(`view-${v}`);
+                        return el && !el.classList.contains('hidden');
+                    });
+                    activeTab = activeView || 'settings';
+                }
+
                 if (typeof switchTab === 'function') {
                     switchTab(activeTab, true);
                 }
