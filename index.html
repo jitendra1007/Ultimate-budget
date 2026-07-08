@@ -8638,7 +8638,7 @@
                             <span class="font-body-semibold">Watch Tutorial</span>
                         </a>
 
-                        <div id="syncStatusIndicator" class="sync-status hidden">
+                        <div id="syncStatusIndicator" class="sync-status-badge sync-status" style="display: none;">
                             <!-- Status will be updated by JS -->
                         </div>
                     </div>
@@ -9071,6 +9071,7 @@
                             <span class="material-symbols-outlined text-[20px]">add</span>
                             <span class="font-body-semibold">Add Transaction</span>
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -9222,6 +9223,7 @@
                             <span class="material-symbols-outlined text-[20px]">swap_horiz</span>
                             <span class="font-body-semibold">Account Transfer</span>
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -9457,6 +9459,7 @@
                         </div>
                         <button class="calendar-btn" id="calendar-unpaid-btn">Showing All</button>
                         <button class="calendar-btn" id="calendar-week-start-btn">Starts Mon</button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -9542,6 +9545,7 @@
                             <span class="material-symbols-outlined text-[20px]">tune</span>
                             Setup Mapping
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -9731,13 +9735,14 @@
                         <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">Annual Dashboard</h1>
                         <p class="text-on-surface-variant font-medium">Your annual financial performance at a glance</p>
                     </div>
-                    <div class="flex gap-3">
+                    <div class="flex items-center gap-3">
                         <button
                             class="bg-primary text-white px-6 py-3 rounded-xl font-body-semibold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
                             onclick="openAnnualSetupModal()" style="font-weight: 600; cursor: pointer; border: none;">
                             <span class="material-symbols-outlined">settings</span>
                             Setup
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -10079,9 +10084,12 @@
             <!-- Sinking Fund View wrapper -->
             <div id="view-savings" class="hidden">
                 <!-- Header Section -->
-                <header class="mb-10">
-                    <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">Savings Tracker</h1>
-                    <p class="text-on-surface-variant font-medium">Track your savings goals and milestones</p>
+                <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                    <div>
+                        <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">Savings Tracker</h1>
+                        <p class="text-on-surface-variant font-medium">Track your savings goals and milestones</p>
+                    </div>
+                    <div class="sync-status-badge sync-status" style="display: none;"></div>
                 </header>
 
                 <!-- KPI Grid -->
@@ -10218,6 +10226,7 @@
                             <span class="material-symbols-outlined text-[20px]">rule</span>
                             <span class="font-body-semibold">Exclusion List</span>
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -10393,6 +10402,7 @@
                         <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">Notifications</h1>
                         <p class="text-on-surface-variant font-medium">All your financial alerts in one place</p>
                     </div>
+                    <div class="sync-status-badge sync-status" style="display: none;"></div>
                 </header>
                 <!-- Activity Feed -->
                 <section class="relative">
@@ -10430,13 +10440,14 @@
                         <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">Net Worth</h1>
                         <p class="text-on-surface-variant font-medium">Track your total wealth growth</p>
                     </div>
-                    <div class="relative">
+                    <div class="relative flex items-center gap-3">
                         <button
                             class="bg-primary text-on-primary px-6 py-3 rounded-xl font-body-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 border-none cursor-pointer"
                             id="nwAddItemBtn" onclick="toggleNwAddItemMenu(event)">
                             <span class="material-symbols-outlined">add</span>
                             Add Item
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                         <div class="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-2 shadow-xl transition-all duration-200 z-50 hidden"
                             id="nwAddItemMenu" style="opacity: 0; transform: translateY(8px);">
                             <div
@@ -10724,6 +10735,7 @@
                             <span class="material-symbols-outlined text-[20px]">bolt</span>
                             <span class="font-body-semibold">Optimise Strategy</span>
                         </button>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </div>
                 </header>
 
@@ -12121,98 +12133,116 @@
         ];
 
         function buildAppStateFromDatabase() {
-            appState = {
-                name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
-                accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
-                reviewNotifSent: 0, cleared: true,
-                fiftyNeedsTarget: 50, fiftyWantsTarget: 30, fiftySavingsTarget: 20, fiftyMapping: {}, fiftyActivePeriodId: null,
-                noSpendExclusions: [], noSpendGoals: {}, noSpendPersonalBest: 0,
-                debtStrategy: "snowball", debtExtraPayment: 0, debtStartMonth: "", debtCustomPriority: [], debtAdjustments: {},
-                netWorthData: { activeYear: new Date().getFullYear(), items: [] },
-                notifications: { active: [], archived: [] },
-                categories: { income: [], savings: [], bills: [], subscription: [], debt: [], expense: [], bank_accounts: [], credit_cards: [] },
-                transactions: [], budgetPeriods: [], savingsGoals: {}, debts: []
-            };
-
-            const activeRecords = (window.databaseArray || []).filter(r => !r.deleted);
-
-            const basic = activeRecords.find(r => r.id === 'config_basic');
-            if (basic) Object.assign(appState, basic.data);
-
-            const fifty = activeRecords.find(r => r.id === 'config_fifty');
-            if (fifty) {
-                appState.fiftyNeedsTarget = fifty.data.needsTarget;
-                appState.fiftyWantsTarget = fifty.data.wantsTarget;
-                appState.fiftySavingsTarget = fifty.data.savingsTarget;
-                appState.fiftyMapping = fifty.data.mapping;
-                appState.fiftyActivePeriodId = fifty.data.activePeriodId;
-            }
-
-            const nospend = activeRecords.find(r => r.id === 'config_nospend');
-            if (nospend) {
-                appState.noSpendExclusions = nospend.data.exclusions;
-                appState.noSpendGoals = nospend.data.goals;
-                appState.noSpendPersonalBest = nospend.data.personalBest;
-            }
-
-            const debtCfg = activeRecords.find(r => r.id === 'config_debt');
-            if (debtCfg) {
-                appState.debtStrategy = debtCfg.data.strategy;
-                appState.debtExtraPayment = debtCfg.data.extraPayment;
-                appState.debtStartMonth = debtCfg.data.startMonth;
-                appState.debtCustomPriority = debtCfg.data.customPriority;
-                appState.debtAdjustments = debtCfg.data.adjustments;
-            }
-
-            const networthCfg = activeRecords.find(r => r.id === 'config_networth');
-            if (networthCfg) {
-                appState.netWorthData.activeYear = networthCfg.data.activeYear;
-            }
-
-            const notifs = activeRecords.find(r => r.id === 'config_notifications');
-            if (notifs) {
-                appState.notifications = notifs.data;
-            }
-
-            const recPaid = activeRecords.find(r => r.id === 'config_recurring_paid');
-            appState.recurringPaidStates = recPaid ? recPaid.data : {};
-
-            const delRec = activeRecords.find(r => r.id === 'config_deleted_recurring');
-            appState.deletedRecurringInstances = delRec ? delRec.data : {};
-
-            activeRecords.filter(r => r.table === 'categories').forEach(c => {
-                const key = c.data.category.toLowerCase().replace(' ', '_');
-                if (appState.categories[key]) appState.categories[key].push(c.data.subcategory);
-            });
-
-            appState.transactions = activeRecords.filter(r => r.table === 'transactions')
-                .map(r => ({ ...r.data, id: r.id }));
-
-            const budgetRecords = activeRecords.filter(r => r.table === 'budgets');
-            const periodMap = {};
-            budgetRecords.forEach(r => {
-                const key = `${r.data.periodStart}_${r.data.periodEnd}`;
-                if (!periodMap[key]) {
-                    periodMap[key] = { id: key, start: r.data.periodStart, end: r.data.periodEnd, settings: [] };
-                }
-                periodMap[key].settings.push({
-                    category: r.data.category, subcategory: r.data.subcategory, amount: r.data.amount
-                });
-            });
-            appState.budgetPeriods = Object.values(periodMap);
-
-            activeRecords.filter(r => r.table === 'savings_goals').forEach(r => {
-                appState.savingsGoals[r.data.goalName] = {
-                    target: r.data.target, monthly: r.data.monthly,
-                    startBalance: r.data.startBalance, targetDate: r.data.targetDate
+            try {
+                appState = {
+                    name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
+                    accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
+                    reviewNotifSent: 0, cleared: true,
+                    fiftyNeedsTarget: 50, fiftyWantsTarget: 30, fiftySavingsTarget: 20, fiftyMapping: {}, fiftyActivePeriodId: null,
+                    noSpendExclusions: [], noSpendGoals: {}, noSpendPersonalBest: 0,
+                    debtStrategy: "snowball", debtExtraPayment: 0, debtStartMonth: "", debtCustomPriority: [], debtAdjustments: {},
+                    netWorthData: { activeYear: new Date().getFullYear(), items: [] },
+                    notifications: { active: [], archived: [] },
+                    categories: { income: [], savings: [], bills: [], subscription: [], debt: [], expense: [], bank_accounts: [], credit_cards: [] },
+                    transactions: [], budgetPeriods: [], savingsGoals: {}, debts: []
                 };
-            });
 
-            appState.debts = activeRecords.filter(r => r.table === 'debts')
-                .map(r => ({ ...r.data, id: r.id.replace('debt_', '') }));
+                const activeRecords = (window.databaseArray || []).filter(r => r && !r.deleted);
 
-            appState.netWorthData.items = activeRecords.filter(r => r.table === 'networth_items')
-                .map(r => ({ id: r.id.replace('nw_', ''), ...r.data }));
+                const basic = activeRecords.find(r => r.id === 'config_basic');
+                if (basic && basic.data) {
+                    Object.assign(appState, basic.data);
+                    if (basic.data.userName !== undefined) appState.name = basic.data.userName;
+                    if (basic.data.name !== undefined) appState.name = basic.data.name;
+                }
+
+                const fifty = activeRecords.find(r => r.id === 'config_fifty');
+                if (fifty && fifty.data) {
+                    appState.fiftyNeedsTarget = fifty.data.needsTarget !== undefined ? fifty.data.needsTarget : 50;
+                    appState.fiftyWantsTarget = fifty.data.wantsTarget !== undefined ? fifty.data.wantsTarget : 30;
+                    appState.fiftySavingsTarget = fifty.data.savingsTarget !== undefined ? fifty.data.savingsTarget : 20;
+                    appState.fiftyMapping = fifty.data.mapping || {};
+                    appState.fiftyActivePeriodId = fifty.data.activePeriodId || null;
+                }
+
+                const nospend = activeRecords.find(r => r.id === 'config_nospend');
+                if (nospend && nospend.data) {
+                    appState.noSpendExclusions = nospend.data.exclusions || [];
+                    appState.noSpendGoals = nospend.data.goals || {};
+                    appState.noSpendPersonalBest = nospend.data.personalBest || 0;
+                }
+
+                const debtCfg = activeRecords.find(r => r.id === 'config_debt');
+                if (debtCfg && debtCfg.data) {
+                    appState.debtStrategy = debtCfg.data.strategy || "snowball";
+                    appState.debtExtraPayment = debtCfg.data.extraPayment || 0;
+                    appState.debtStartMonth = debtCfg.data.startMonth || "";
+                    appState.debtCustomPriority = debtCfg.data.customPriority || [];
+                    appState.debtAdjustments = debtCfg.data.adjustments || {};
+                }
+
+                const networthCfg = activeRecords.find(r => r.id === 'config_networth');
+                if (networthCfg && networthCfg.data) {
+                    appState.netWorthData.activeYear = networthCfg.data.activeYear || new Date().getFullYear();
+                }
+
+                const notifs = activeRecords.find(r => r.id === 'config_notifications');
+                if (notifs && notifs.data) {
+                    appState.notifications = notifs.data;
+                }
+
+                const recPaid = activeRecords.find(r => r.id === 'config_recurring_paid');
+                appState.recurringPaidStates = (recPaid && recPaid.data) ? recPaid.data : {};
+
+                const delRec = activeRecords.find(r => r.id === 'config_deleted_recurring');
+                appState.deletedRecurringInstances = (delRec && delRec.data) ? delRec.data : {};
+
+                activeRecords.filter(r => r && r.table === 'categories' && r.data).forEach(c => {
+                    if (c.data.category && c.data.subcategory) {
+                        const key = c.data.category.toLowerCase().replace(' ', '_');
+                        if (appState.categories[key]) {
+                            if (!appState.categories[key].includes(c.data.subcategory)) {
+                                appState.categories[key].push(c.data.subcategory);
+                            }
+                        }
+                    }
+                });
+
+                appState.transactions = activeRecords.filter(r => r && r.table === 'transactions' && r.data)
+                    .map(r => ({ ...r.data, id: r.id }));
+
+                const budgetRecords = activeRecords.filter(r => r && r.table === 'budgets' && r.data);
+                const periodMap = {};
+                budgetRecords.forEach(r => {
+                    if (r.data.periodStart && r.data.periodEnd) {
+                        const key = `${r.data.periodStart}_${r.data.periodEnd}`;
+                        if (!periodMap[key]) {
+                            periodMap[key] = { id: key, start: r.data.periodStart, end: r.data.periodEnd, settings: [] };
+                        }
+                        periodMap[key].settings.push({
+                            category: r.data.category, subcategory: r.data.subcategory, amount: r.data.amount
+                        });
+                    }
+                });
+                appState.budgetPeriods = Object.values(periodMap);
+
+                activeRecords.filter(r => r && r.table === 'savings_goals' && r.data).forEach(r => {
+                    if (r.data.goalName) {
+                        appState.savingsGoals[r.data.goalName] = {
+                            target: r.data.target, monthly: r.data.monthly,
+                            startBalance: r.data.startBalance, targetDate: r.data.targetDate
+                        };
+                    }
+                });
+
+                appState.debts = activeRecords.filter(r => r && r.table === 'debts' && r.data)
+                    .map(r => ({ ...r.data, id: r.id ? r.id.replace('debt_', '') : '' }));
+
+                appState.netWorthData.items = activeRecords.filter(r => r && r.table === 'networth_items' && r.data)
+                    .map(r => ({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data }));
+            } catch (err) {
+                console.error("Error building appState from database array:", err);
+            }
         }
 
         function syncAppStateToDatabase() {
@@ -12229,7 +12259,7 @@
             }
 
             upsertEnvelope('config_basic', 'config', {
-                userName: appState.name, currency: appState.currency, initialBalance: appState.initialBalance,
+                userName: appState.name || '', name: appState.name || '', currency: appState.currency, initialBalance: appState.initialBalance,
                 budgetingMethod: appState.budgetingMethod, accountStartDate: appState.accountStartDate,
                 accountStartBalances: appState.accountStartBalances, accountIcons: appState.accountIcons,
                 annualStartMonth: appState.annualStartMonth, reviewNotifSent: appState.reviewNotifSent, cleared: appState.cleared
@@ -12939,6 +12969,10 @@
                 count++;
                 if (count >= 10) clearInterval(interval);
             }, 50);
+
+            if (typeof setSyncStatus === 'function' && currentSyncStatusText) {
+                setSyncStatus(currentSyncStatusText, currentSyncStatusType);
+            }
         }
 
         function openModal(modalId) {
@@ -15146,6 +15180,7 @@
                             <h1 class="font-display-lg text-[32px] text-on-surface tracking-tight">My Budgets</h1>
                             <p class="text-on-surface-variant font-medium">Historical snapshots and future planning cycles.</p>
                         </div>
+                        <div class="sync-status-badge sync-status" style="display: none;"></div>
                     </header>
                     <div class="budgets-grid">
                         ${cardsHtml}
@@ -15665,6 +15700,7 @@
                                 class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl px-5 py-2.5 transition-all shadow-sm flex items-center gap-2" style="font-weight: 600; cursor: pointer;">
                                 ${getIconSVG('Trash2', 16)} Delete
                             </button>
+                            <div class="sync-status-badge sync-status" style="display: none;"></div>
                         </div>
                     </header>
                     
@@ -15953,9 +15989,12 @@
                                 <p class="text-on-surface-variant font-medium" style="margin:0.25rem 0 0 0;">Plan your income and spending</p>
                             </div>
                         </div>
-                        <button onclick="saveNewBudgetPeriod()" class="bg-primary text-on-primary px-8 py-3.5 rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" style="font-weight: 600; cursor: pointer; border: none;">
-                            ${getIconSVG('Check', 18)} Confirm Budget
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <button onclick="saveNewBudgetPeriod()" class="bg-primary text-on-primary px-8 py-3.5 rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" style="font-weight: 600; cursor: pointer; border: none;">
+                                ${getIconSVG('Check', 18)} Confirm Budget
+                            </button>
+                            <div class="sync-status-badge sync-status" style="display: none;"></div>
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -23156,6 +23195,14 @@
         // --- Initialize Page Hooks ---
         window.addEventListener("DOMContentLoaded", () => {
             initLocalStorage();
+            if (localStorage.getItem('ultimatebudget_has_linked_google') === 'true') {
+                const authBtn = document.getElementById('authBtn');
+                if (authBtn) {
+                    authBtn.textContent = 'Syncing...';
+                    authBtn.disabled = true;
+                }
+                setSyncStatus("Connecting to Drive...", "active");
+            }
             if (typeof evaluateNotifications === "function") {
                 evaluateNotifications("init");
             }
@@ -23342,10 +23389,30 @@
         let syncTimerId = null;
         let lastSyncTime = null;
 
+        function refreshCurrentView() {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            try {
+                if (typeof populateInputs === 'function') populateInputs();
+                if (typeof renderCategories === 'function') renderCategories();
+                if (typeof updateBalanceSummary === 'function') updateBalanceSummary();
+                if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                if (typeof updateAccountsView === 'function') updateAccountsView();
+
+                const activeTab = (typeof budgetState !== 'undefined' && budgetState.activeTab) ? budgetState.activeTab : 'settings';
+                if (typeof switchTab === 'function') {
+                    switchTab(activeTab, true);
+                }
+            } catch (err) {
+                console.error("Error refreshing current view:", err);
+            } finally {
+                window.scrollTo({ top: scrollTop, behavior: 'instant' });
+            }
+        }
+
         function updateRelativeSyncStatus() {
             if (!lastSyncTime) return;
-            const el = document.getElementById('syncStatusIndicator');
-            if (!el) return;
+            const elements = document.querySelectorAll('.sync-status-badge, #syncStatusIndicator');
+            if (!elements.length) return;
 
             const diff = Date.now() - lastSyncTime;
             let newText = "";
@@ -23358,27 +23425,27 @@
                 newText = `☁️ Last synced ${mins} min ago`;
             }
 
-            const currentText = el.innerText;
-            const isShowingSyncedStatus = currentText === "✅ Synced Just Now" || currentText.startsWith("☁️ Last synced");
-            if (isShowingSyncedStatus && currentText !== newText) {
-                el.innerText = newText;
-                currentSyncStatusText = newText;
-            }
+            elements.forEach(el => {
+                const currentText = el.innerText;
+                const isShowingSyncedStatus = currentText === "✅ Synced Just Now" || currentText.startsWith("☁️ Last synced");
+                if (isShowingSyncedStatus && currentText !== newText) {
+                    el.innerText = newText;
+                }
+            });
+            currentSyncStatusText = newText;
         }
 
         function setSyncStatus(text, type = '', isNewSync = false) {
             currentSyncStatusText = text;
             currentSyncStatusType = type;
-            const el = document.getElementById('syncStatusIndicator');
-            if (el) {
+            const elements = document.querySelectorAll('.sync-status-badge, #syncStatusIndicator');
+            elements.forEach(el => {
                 if (!text) {
-                    // If the text is blank, hide the badge completely
                     el.style.display = 'none';
                 } else {
-                    // If there is text, show the badge
                     el.style.display = 'inline-flex';
                     el.innerText = text;
-                    el.className = 'sync-status ' + type;
+                    el.className = (el.className.includes('sync-status-badge') ? 'sync-status-badge ' : '') + 'sync-status ' + type;
 
                     if (type !== 'error') {
                         el.style.cursor = 'default';
@@ -23396,7 +23463,7 @@
                         };
                     }
                 }
-            }
+            });
 
             if (isNewSync) {
                 lastSyncTime = Date.now();
@@ -23589,7 +23656,10 @@
                 let success = true;
                 if (cloudFileId) {
                     const fileData = await gapi.client.drive.files.get({ fileId: cloudFileId, alt: 'media' });
-                    const remotePayload = fileData.result;
+                    let remotePayload = fileData.result;
+                    if (typeof remotePayload === 'string') {
+                        try { remotePayload = JSON.parse(remotePayload); } catch (e) { console.error("Error parsing remote payload JSON:", e); }
+                    }
 
                     // Look for the generic "records" array
                     if (remotePayload && remotePayload.records) {
@@ -23614,6 +23684,12 @@
                         const finalMergedRecords = Array.from(mergedMap.values());
                         updateDataState(finalMergedRecords, true);
 
+                        // Rebuild in-memory appState from newly merged databaseArray and refresh current view!
+                        if (typeof buildAppStateFromDatabase === 'function') {
+                            buildAppStateFromDatabase();
+                        }
+                        refreshCurrentView();
+
                         if (localHasNewerEdits) {
                             success = await autoUploadToCloud();
                         }
@@ -23621,6 +23697,23 @@
                 } else {
                     success = await autoUploadToCloud();
                 }
+                if (success) {
+                    setSyncStatus("✅ Synced Just Now", "active", true);
+                    return true;
+                }
+                return false;
+            } catch (err) {
+                console.error("Sync pull execution exception:", err);
+                const msg = !navigator.onLine ? "Sync paused - Offline\nTap to reconnect" : "Sync Paused ⚠️";
+                setSyncStatus(msg, "error");
+                if (err.status === 401) {
+                    // Force expiration flag and trigger a silent refresh instead of logging out
+                    localStorage.setItem('ultimatebudget_google_token_expiry', '0');
+                    evaluateRoutingSession();
+                }
+                return false;
+            }
+        }
                 if (success) {
                     setSyncStatus("✅ Synced Just Now", "active", true);
                     return true;
