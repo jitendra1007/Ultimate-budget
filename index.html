@@ -23714,23 +23714,6 @@
                 return false;
             }
         }
-                if (success) {
-                    setSyncStatus("✅ Synced Just Now", "active", true);
-                    return true;
-                }
-                return false;
-            } catch (err) {
-                console.error("Sync pull execution exception:", err);
-                const msg = !navigator.onLine ? "Sync paused - Offline\nTap to reconnect" : "Sync Paused ⚠️";
-                setSyncStatus(msg, "error");
-                if (err.status === 401) {
-                    // Force expiration flag and trigger a silent refresh instead of logging out
-                    localStorage.setItem('ultimatebudget_google_token_expiry', '0');
-                    evaluateRoutingSession();
-                }
-                return false;
-            }
-        }
 
         async function autoUploadToCloud() {
             if (localStorage.getItem('ultimatebudget_has_linked_google') !== 'true' || !accessToken) return false;
