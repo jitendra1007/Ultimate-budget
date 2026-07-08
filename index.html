@@ -12119,10 +12119,6 @@
                 data: { activeYear: new Date().getFullYear() }
             },
             {
-                id: 'config_notifications', table: 'config_notifications', updatedAt: 0, deleted: false,
-                data: { active: [], archived: [] }
-            },
-            {
                 id: 'config_recurring_paid', table: 'config_recurring_paid', updatedAt: 0, deleted: false,
                 data: {}
             },
@@ -12134,6 +12130,53 @@
 
         function buildAppStateFromDatabase() {
             try {
+                // Migration for old config_notifications single envelope to atomic records
+                const oldNotifs = (window.databaseArray || []).find(r => r && r.id === 'config_notifications' && !r.deleted);
+                if (oldNotifs && oldNotifs.data) {
+                    const timestamp = Date.now();
+                    const activeList = oldNotifs.data.active || [];
+                    const archivedList = oldNotifs.data.archived || [];
+                    const newRecords = [];
+                    
+                    activeList.forEach((notif, idx) => {
+                        const id = notif.id || `notif_migrated_active_${timestamp}_${idx}`;
+                        newRecords.push({
+                            id,
+                            table: 'notifications',
+                            updatedAt: timestamp,
+                            deleted: false,
+                            data: { ...notif, id, status: 'active', timestamp: notif.timestamp || timestamp }
+                        });
+                    });
+                    
+                    archivedList.forEach((notif, idx) => {
+                        const id = notif.id || `notif_migrated_arch_${timestamp}_${idx}`;
+                        newRecords.push({
+                            id,
+                            table: 'notifications',
+                            updatedAt: timestamp,
+                            deleted: false,
+                            data: { ...notif, id, status: 'archived', timestamp: notif.timestamp || timestamp }
+                        });
+                    });
+                    
+                    // Update databaseArray
+                    window.databaseArray = (window.databaseArray || []).map(r => 
+                        r.id === 'config_notifications' ? { ...r, deleted: true, updatedAt: timestamp } : r
+                    );
+                    window.databaseArray.push(...newRecords);
+                    
+                    // Persist
+                    if (typeof updateDataState === 'function') {
+                        updateDataState(window.databaseArray, true);
+                    } else {
+                        localStorage.setItem(ULTIMATE_BUDGET_LOCAL_KEY, JSON.stringify(window.databaseArray));
+                    }
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
+                    }
+                }
+
                 appState = {
                     name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
                     accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
@@ -12186,10 +12229,18 @@
                     appState.netWorthData.activeYear = networthCfg.data.activeYear || new Date().getFullYear();
                 }
 
-                const notifs = activeRecords.find(r => r.id === 'config_notifications');
-                if (notifs && notifs.data) {
-                    appState.notifications = notifs.data;
-                }
+                appState.notifications = { active: [], archived: [] };
+                const notifRecords = activeRecords.filter(r => r && r.table === 'notifications' && r.data);
+                notifRecords.forEach(r => {
+                    const notifData = { ...r.data, id: r.id };
+                    if (r.data.status === 'archived') {
+                        appState.notifications.archived.push(notifData);
+                    } else {
+                        appState.notifications.active.push(notifData);
+                    }
+                });
+                appState.notifications.active.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                appState.notifications.archived.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
                 appState.recurringPaidStates = {};
                 const recPaid = activeRecords.find(r => r.id === 'config_recurring_paid');
@@ -12294,7 +12345,16 @@
             upsertEnvelope('config_networth', 'config_networth', {
                 activeYear: appState.netWorthData.activeYear
             });
-            upsertEnvelope('config_notifications', 'config_notifications', appState.notifications);
+            (appState.notifications?.active || []).forEach(notif => {
+                const id = notif.id;
+                const data = { ...notif, status: 'active' };
+                upsertEnvelope(id, 'notifications', data);
+            });
+            (appState.notifications?.archived || []).forEach(notif => {
+                const id = notif.id;
+                const data = { ...notif, status: 'archived' };
+                upsertEnvelope(id, 'notifications', data);
+            });
             // Upsert atomic recurring paid states
             Object.keys(appState.recurringPaidStates || {}).forEach(occurrenceId => {
                 const isPaid = !!appState.recurringPaidStates[occurrenceId];
@@ -12504,13 +12564,13 @@
         // Save active state to localStorage
         function saveStateToLocalStorage(actionType = "init", affectedTxId = null, deletedTx = null) {
             try {
+                if (typeof evaluateNotifications === "function") {
+                    evaluateNotifications(actionType, affectedTxId, deletedTx);
+                }
                 if (typeof syncAppStateToDatabase === 'function') {
                     syncAppStateToDatabase();
                 } else {
                     localStorage.setItem("budget_tracker_settings", JSON.stringify(appState));
-                }
-                if (typeof evaluateNotifications === "function") {
-                    evaluateNotifications(actionType, affectedTxId, deletedTx);
                 }
             } catch (e) {
                 console.error("Failed to save settings to localStorage:", e);
@@ -13647,8 +13707,17 @@
         function clearFilters() {
             document.getElementById("filter-search").value = "";
 
-            document.getElementById("filter-start-date").value = "";
-            document.getElementById("filter-end-date").value = "";
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth();
+            const firstDay = new Date(y, m, 1);
+            const lastDay = new Date(y, m + 1, 0);
+
+            const firstDayStr = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-01`;
+            const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+            document.getElementById("filter-start-date").value = firstDayStr;
+            document.getElementById("filter-end-date").value = lastDayStr;
             updateFilterDateDisplay('start');
             updateFilterDateDisplay('end');
 
@@ -23038,15 +23107,28 @@
                                 metadata: { type: "review", triggerDate: endOfMonthStr }
                             });
                             appState.reviewNotifSent = 1;
-                            if (actionType !== "init") {
-                                saveStateToLocalStorage();
-                            }
                         }
                     }
                 } else {
                     appState.notifications.active = appState.notifications.active.filter(n => n.title !== reviewTitle);
                     appState.notifications.archived = appState.notifications.archived.filter(n => n.title !== reviewTitle);
                 }
+            }
+
+            // Ensure every notification has a timestamp
+            if (appState.notifications) {
+                (appState.notifications.active || []).forEach(n => {
+                    if (!n.timestamp) {
+                        const match = n.id.match(/\d{13}/);
+                        n.timestamp = match ? parseInt(match[0], 10) : Date.now();
+                    }
+                });
+                (appState.notifications.archived || []).forEach(n => {
+                    if (!n.timestamp) {
+                        const match = n.id.match(/\d{13}/);
+                        n.timestamp = match ? parseInt(match[0], 10) : Date.now();
+                    }
+                });
             }
         };
 
@@ -23240,6 +23322,9 @@
             }
             if (typeof evaluateNotifications === "function") {
                 evaluateNotifications("init");
+            }
+            if (typeof syncAppStateToDatabase === "function") {
+                syncAppStateToDatabase();
             }
             updateSidebarBadge();
             const initNow = new Date();
