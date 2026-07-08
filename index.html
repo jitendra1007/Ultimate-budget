@@ -12191,11 +12191,27 @@
                     appState.notifications = notifs.data;
                 }
 
+                appState.recurringPaidStates = {};
                 const recPaid = activeRecords.find(r => r.id === 'config_recurring_paid');
-                appState.recurringPaidStates = (recPaid && recPaid.data) ? recPaid.data : {};
+                if (recPaid && recPaid.data) {
+                    Object.assign(appState.recurringPaidStates, recPaid.data);
+                }
+                activeRecords.filter(r => r && r.table === 'recurring_paid').forEach(r => {
+                    if (r.data && r.data.occurrenceId) {
+                        appState.recurringPaidStates[r.data.occurrenceId] = r.data.paid;
+                    }
+                });
 
+                appState.deletedRecurringInstances = {};
                 const delRec = activeRecords.find(r => r.id === 'config_deleted_recurring');
-                appState.deletedRecurringInstances = (delRec && delRec.data) ? delRec.data : {};
+                if (delRec && delRec.data) {
+                    Object.assign(appState.deletedRecurringInstances, delRec.data);
+                }
+                activeRecords.filter(r => r && r.table === 'recurring_deleted').forEach(r => {
+                    if (r.data && r.data.occurrenceId) {
+                        appState.deletedRecurringInstances[r.data.occurrenceId] = r.data.deleted;
+                    }
+                });
 
                 activeRecords.filter(r => r && r.table === 'categories' && r.data).forEach(c => {
                     if (c.data.category && c.data.subcategory) {
@@ -12279,8 +12295,21 @@
                 activeYear: appState.netWorthData.activeYear
             });
             upsertEnvelope('config_notifications', 'config_notifications', appState.notifications);
-            upsertEnvelope('config_recurring_paid', 'config_recurring_paid', appState.recurringPaidStates || {});
-            upsertEnvelope('config_deleted_recurring', 'config_deleted_recurring', appState.deletedRecurringInstances || {});
+            // Upsert atomic recurring paid states
+            Object.keys(appState.recurringPaidStates || {}).forEach(occurrenceId => {
+                const isPaid = !!appState.recurringPaidStates[occurrenceId];
+                const id = `rp_${occurrenceId}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                upsertEnvelope(id, 'recurring_paid', { occurrenceId, paid: isPaid });
+            });
+
+            // Upsert atomic recurring deleted instances
+            Object.keys(appState.deletedRecurringInstances || {}).forEach(occurrenceId => {
+                const isDeleted = !!appState.deletedRecurringInstances[occurrenceId];
+                if (isDeleted) {
+                    const id = `rd_${occurrenceId}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    upsertEnvelope(id, 'recurring_deleted', { occurrenceId, deleted: isDeleted });
+                }
+            });
 
             Object.keys(appState.categories).forEach(catKey => {
                 const catGroup = catKey === 'bank_accounts' ? 'Bank Accounts' : (catKey === 'credit_cards' ? 'Credit Cards' : catKey.charAt(0).toUpperCase() + catKey.slice(1));
