@@ -12855,9 +12855,11 @@
         }
 
         function switchTab(tabId, preserveState = false) {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
+            if (!preserveState) {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }
             // Reset dynamic body backgrounds when switching tabs
             cleanupBudgetDetailsBackground();
             // Hide all tab content
@@ -12961,14 +12963,16 @@
                 sessionStorage.removeItem('budget_tracker_active_period_id');
             }
 
-            let count = 0;
-            const interval = setInterval(() => {
-                window.scrollTo(0, 0);
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0;
-                count++;
-                if (count >= 10) clearInterval(interval);
-            }, 50);
+            if (!preserveState) {
+                let count = 0;
+                const interval = setInterval(() => {
+                    window.scrollTo(0, 0);
+                    document.body.scrollTop = 0;
+                    document.documentElement.scrollTop = 0;
+                    count++;
+                    if (count >= 10) clearInterval(interval);
+                }, 50);
+            }
 
             if (typeof setSyncStatus === 'function' && currentSyncStatusText) {
                 setSyncStatus(currentSyncStatusText, currentSyncStatusType);
@@ -23005,7 +23009,9 @@
                                 metadata: { type: "review", triggerDate: endOfMonthStr }
                             });
                             appState.reviewNotifSent = 1;
-                            saveStateToLocalStorage();
+                            if (actionType !== "init") {
+                                saveStateToLocalStorage();
+                            }
                         }
                     }
                 } else {
