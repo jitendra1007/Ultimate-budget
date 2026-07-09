@@ -12177,6 +12177,44 @@
                     }
                 }
 
+                // Migration for old config_debt to atomic records
+                const oldDebtCfg = (window.databaseArray || []).find(r => r && r.id === 'config_debt' && !r.deleted);
+                if (oldDebtCfg && oldDebtCfg.data) {
+                    const timestamp = Date.now();
+                    const newRecords = [
+                        { id: 'config_debt_strategy', table: 'config_debt_strategy', updatedAt: timestamp, deleted: false, data: { strategy: oldDebtCfg.data.strategy || "snowball" } },
+                        { id: 'config_debt_extra', table: 'config_debt_extra', updatedAt: timestamp, deleted: false, data: { extraPayment: oldDebtCfg.data.extraPayment || 0 } },
+                        { id: 'config_debt_start', table: 'config_debt_start', updatedAt: timestamp, deleted: false, data: { startMonth: oldDebtCfg.data.startMonth || "" } },
+                        { id: 'config_debt_priority', table: 'config_debt_priority', updatedAt: timestamp, deleted: false, data: { customPriority: oldDebtCfg.data.customPriority || [] } }
+                    ];
+
+                    Object.keys(oldDebtCfg.data.adjustments || {}).forEach(monthStr => {
+                        newRecords.push({
+                            id: `debt_adj_${monthStr}`,
+                            table: 'debt_adjustments',
+                            updatedAt: timestamp,
+                            deleted: false,
+                            data: { month: monthStr, amount: oldDebtCfg.data.adjustments[monthStr] }
+                        });
+                    });
+
+                    // Update databaseArray
+                    window.databaseArray = (window.databaseArray || []).map(r => 
+                        r.id === 'config_debt' ? { ...r, deleted: true, updatedAt: timestamp } : r
+                    );
+                    window.databaseArray.push(...newRecords);
+
+                    // Persist
+                    if (typeof updateDataState === 'function') {
+                        updateDataState(window.databaseArray, true);
+                    } else {
+                        localStorage.setItem(ULTIMATE_BUDGET_LOCAL_KEY, JSON.stringify(window.databaseArray));
+                    }
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
+                    }
+                }
+
                 appState = {
                     name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
                     accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
@@ -12215,14 +12253,22 @@
                     appState.noSpendPersonalBest = nospend.data.personalBest || 0;
                 }
 
-                const debtCfg = activeRecords.find(r => r.id === 'config_debt');
-                if (debtCfg && debtCfg.data) {
-                    appState.debtStrategy = debtCfg.data.strategy || "snowball";
-                    appState.debtExtraPayment = debtCfg.data.extraPayment || 0;
-                    appState.debtStartMonth = debtCfg.data.startMonth || "";
-                    appState.debtCustomPriority = debtCfg.data.customPriority || [];
-                    appState.debtAdjustments = debtCfg.data.adjustments || {};
-                }
+                const strategyRec = activeRecords.find(r => r.id === 'config_debt_strategy');
+                if (strategyRec && strategyRec.data) appState.debtStrategy = strategyRec.data.strategy || "snowball";
+
+                const extraRec = activeRecords.find(r => r.id === 'config_debt_extra');
+                if (extraRec && extraRec.data) appState.debtExtraPayment = extraRec.data.extraPayment || 0;
+
+                const startRec = activeRecords.find(r => r.id === 'config_debt_start');
+                if (startRec && startRec.data) appState.debtStartMonth = startRec.data.startMonth || "";
+
+                const priorityRec = activeRecords.find(r => r.id === 'config_debt_priority');
+                if (priorityRec && priorityRec.data) appState.debtCustomPriority = priorityRec.data.customPriority || [];
+
+                appState.debtAdjustments = {};
+                activeRecords.filter(r => r.table === 'debt_adjustments' && r.data).forEach(r => {
+                    appState.debtAdjustments[r.data.month] = r.data.amount;
+                });
 
                 const networthCfg = activeRecords.find(r => r.id === 'config_networth');
                 if (networthCfg && networthCfg.data) {
@@ -12338,9 +12384,14 @@
             upsertEnvelope('config_nospend', 'config_nospend', {
                 exclusions: appState.noSpendExclusions, goals: appState.noSpendGoals, personalBest: appState.noSpendPersonalBest
             });
-            upsertEnvelope('config_debt', 'config_debt', {
-                strategy: appState.debtStrategy, extraPayment: appState.debtExtraPayment, startMonth: appState.debtStartMonth,
-                customPriority: appState.debtCustomPriority, adjustments: appState.debtAdjustments
+            upsertEnvelope('config_debt_strategy', 'config_debt_strategy', { strategy: appState.debtStrategy });
+            upsertEnvelope('config_debt_extra', 'config_debt_extra', { extraPayment: appState.debtExtraPayment });
+            upsertEnvelope('config_debt_start', 'config_debt_start', { startMonth: appState.debtStartMonth });
+            upsertEnvelope('config_debt_priority', 'config_debt_priority', { customPriority: appState.debtCustomPriority });
+
+            Object.keys(appState.debtAdjustments || {}).forEach(monthStr => {
+                const id = `debt_adj_${monthStr}`;
+                upsertEnvelope(id, 'debt_adjustments', { month: monthStr, amount: appState.debtAdjustments[monthStr] });
             });
             upsertEnvelope('config_networth', 'config_networth', {
                 activeYear: appState.netWorthData.activeYear
@@ -20833,7 +20884,14 @@
         }
 
         // Open Optimise Strategy modal
-        function openOptimiseModal() {
+        async function openOptimiseModal() {
+            if (localStorage.getItem('ultimatebudget_has_linked_google') === 'true' && accessToken) {
+                try {
+                    await pullAndMergeCloudData();
+                } catch (e) {
+                    console.error("Failed to pull cloud data before opening Optimise modal:", e);
+                }
+            }
             document.getElementById("optimise-start-month").value = appState.debtStartMonth || DEFAULT_STATE.debtStartMonth;
             document.getElementById("optimise-strategy-select").value = appState.debtStrategy || 'snowball';
             document.getElementById("optimise-extra-input").value = appState.debtExtraPayment || 0;
@@ -23786,6 +23844,15 @@
         async function pullAndMergeCloudData() {
             if (!accessToken) return false;
             try {
+                const getSafeTime = (val) => {
+                    if (typeof val === 'string') {
+                        const parsed = new Date(val).getTime();
+                        return isNaN(parsed) ? 0 : parsed;
+                    }
+                    const num = Number(val);
+                    return isNaN(num) ? 0 : num;
+                };
+
                 const response = await gapi.client.drive.files.list({
                     q: "name = " + String.fromCharCode(39) + ULTIMATE_BUDGET_FILE_NAME + String.fromCharCode(39) + " and trashed = false",
                     spaces: 'appDataFolder',
@@ -23816,7 +23883,9 @@
                         (window.databaseArray || []).forEach(localItem => {
                             const cloudItem = mergedMap.get(localItem.id);
                             // If local item is newer, or it doesn't exist in the cloud yet, local wins
-                            if (!cloudItem || (localItem.updatedAt > (cloudItem.updatedAt || 0))) {
+                            const localTime = getSafeTime(localItem.updatedAt);
+                            const cloudTime = cloudItem ? getSafeTime(cloudItem.updatedAt) : 0;
+                            if (!cloudItem || localTime > cloudTime) {
                                 mergedMap.set(localItem.id, localItem);
                                 localHasNewerEdits = true;
                             }
