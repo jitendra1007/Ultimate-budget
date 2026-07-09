@@ -20929,6 +20929,9 @@
         function saveMyDebts() {
             saveModalFieldsToTempDebts();
             saveStateToLocalStorage();
+            if (typeof scheduleCloudSync === 'function') {
+                scheduleCloudSync(true);
+            }
             closeModal("modal-debts");
             renderDebtTrackerView();
             showToast("Debt list updated successfully", "success");
@@ -20947,6 +20950,9 @@
             appState.debtAdjustments[monthStr] = amount;
 
             saveStateToLocalStorage();
+            if (typeof scheduleCloudSync === 'function') {
+                scheduleCloudSync(true);
+            }
             renderAdjustmentsList();
             renderDebtTrackerView();
             showToast(`Adjustment applied for ${monthStr}`, "success");
@@ -21020,6 +21026,9 @@
             if (appState.debtAdjustments && appState.debtAdjustments[monthStr] !== undefined) {
                 delete appState.debtAdjustments[monthStr];
                 saveStateToLocalStorage();
+                if (typeof scheduleCloudSync === 'function') {
+                    scheduleCloudSync(true);
+                }
                 renderAdjustmentsList();
                 renderDebtTrackerView();
                 showToast(`Deleted adjustment for ${monthStr}`, "success");
@@ -21181,6 +21190,9 @@
             }
 
             saveStateToLocalStorage();
+            if (typeof scheduleCloudSync === 'function') {
+                scheduleCloudSync(true);
+            }
             closeModal("modal-optimise");
             renderDebtTrackerView();
             showToast("Payoff strategy updated successfully", "success");
