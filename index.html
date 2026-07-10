@@ -12097,9 +12097,10 @@
             {
                 id: 'config_basic', table: 'config', updatedAt: 0, deleted: false,
                 data: {
-                    userName: '', currency: '$', initialBalance: 0, budgetingMethod: 'carry-over',
+                    name: '', currency: '$', initialBalance: 0, budgetingMethod: 'carry-over',
                     accountStartDate: '', accountStartBalances: {}, accountIcons: {},
-                    annualStartMonth: '', reviewNotifSent: 0, cleared: true
+                    annualStartMonth: '', reviewNotifSent: 0, cleared: true,
+                    calendarStartOnMonday: true
                 }
             },
             {
@@ -12281,6 +12282,12 @@
                     Object.assign(appState, basic.data);
                     if (basic.data.userName !== undefined) appState.name = basic.data.userName;
                     if (basic.data.name !== undefined) appState.name = basic.data.name;
+                    if (basic.data.initialBalance === undefined && basic.data.startBalance !== undefined) {
+                        appState.initialBalance = Number(basic.data.startBalance) || 0;
+                    }
+                    if (basic.data.calendarStartOnMonday === undefined && basic.data.startDayOfWeek !== undefined) {
+                        appState.calendarStartOnMonday = (basic.data.startDayOfWeek === 1);
+                    }
                 }
 
                 const fiftyTargets = activeRecords.find(r => r.id === 'config_fifty_targets');
@@ -12431,10 +12438,16 @@
             }
 
             upsertEnvelope('config_basic', 'config', {
-                userName: appState.name || '', name: appState.name || '', currency: appState.currency, initialBalance: appState.initialBalance,
-                budgetingMethod: appState.budgetingMethod, accountStartDate: appState.accountStartDate,
-                accountStartBalances: appState.accountStartBalances, accountIcons: appState.accountIcons,
-                annualStartMonth: appState.annualStartMonth, reviewNotifSent: appState.reviewNotifSent, cleared: appState.cleared,
+                name: appState.name || '',
+                currency: appState.currency,
+                initialBalance: appState.initialBalance,
+                budgetingMethod: appState.budgetingMethod,
+                accountStartDate: appState.accountStartDate,
+                accountStartBalances: appState.accountStartBalances,
+                accountIcons: appState.accountIcons,
+                annualStartMonth: appState.annualStartMonth,
+                reviewNotifSent: appState.reviewNotifSent,
+                cleared: appState.cleared,
                 calendarStartOnMonday: appState.calendarStartOnMonday
             });
             upsertEnvelope('config_fifty_targets', 'config_fifty_targets', {
