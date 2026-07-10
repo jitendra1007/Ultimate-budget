@@ -23473,9 +23473,6 @@
             if (typeof evaluateNotifications === "function") {
                 evaluateNotifications("init");
             }
-            if (typeof syncAppStateToDatabase === "function") {
-                syncAppStateToDatabase();
-            }
             updateSidebarBadge();
             const initNow = new Date();
             currentLedgerMonthStr = `${initNow.getFullYear()}-${String(initNow.getMonth() + 1).padStart(2, '0')}`;
