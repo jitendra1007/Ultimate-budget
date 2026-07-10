@@ -11065,7 +11065,7 @@
                         class="w-full py-4 bg-white text-primary rounded-2xl font-body-semibold text-sm border-2 border-dashed border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all flex items-center justify-center gap-2"
                         onclick="closeModal('recurring-schedule-modal'); openAddTransactionModal('recurring')">
                         <span class="material-symbols-outlined text-[18px]">add</span>
-                        + Add New Recurring Schedule
+                        Add New Recurring Schedule
                     </button>
                 </div>
             </div>
@@ -11441,7 +11441,7 @@
                 <button class="material-symbols-outlined modal-close-btn"
                     onclick="closeModal('modal-start-balance')">close</button>
             </div>
-            <div class="p-8 space-y-6 max-h-[75vh] overflow-y-auto scrollbar-hide" id="start-balance-modal-body">
+            <div class="p-6 sm:p-8 space-y-4 sm:space-y-6 max-h-[50vh] sm:max-h-[70vh] overflow-y-auto scrollbar-hide" id="start-balance-modal-body">
                 <!-- Dynamically generated bank accounts and credit cards inputs -->
             </div>
             <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
@@ -12215,6 +12215,51 @@
                     }
                 }
 
+                // Migration for old config_fifty to atomic records
+                const oldFifty = (window.databaseArray || []).find(r => r && r.id === 'config_fifty' && !r.deleted);
+                if (oldFifty && oldFifty.data) {
+                    const timestamp = Date.now();
+                    const newRecords = [
+                        { id: 'config_fifty_targets', table: 'config_fifty_targets', updatedAt: timestamp, deleted: false, data: { needsTarget: oldFifty.data.needsTarget !== undefined ? oldFifty.data.needsTarget : 50, wantsTarget: oldFifty.data.wantsTarget !== undefined ? oldFifty.data.wantsTarget : 30, savingsTarget: oldFifty.data.savingsTarget !== undefined ? oldFifty.data.savingsTarget : 20 } },
+                        { id: 'config_fifty_active_period', table: 'config_fifty_active_period', updatedAt: timestamp, deleted: false, data: { activePeriodId: oldFifty.data.activePeriodId || null } }
+                    ];
+
+                    // Convert mapping
+                    const mapping = oldFifty.data.mapping || {};
+                    Object.keys(mapping).forEach(key => {
+                        const val = mapping[key];
+                        const idx = key.indexOf('_');
+                        if (idx > 0) {
+                            const cat = key.substring(0, idx);
+                            const sub = key.substring(idx + 1);
+                            const id = `fifty_map_${cat}_${sub}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                            newRecords.push({
+                                id,
+                                table: 'fifty_mappings',
+                                updatedAt: timestamp,
+                                deleted: false,
+                                data: { category: cat, subcategory: sub, segment: val }
+                            });
+                        }
+                    });
+
+                    // Update databaseArray
+                    window.databaseArray = (window.databaseArray || []).map(r => 
+                        r.id === 'config_fifty' ? { ...r, deleted: true, updatedAt: timestamp } : r
+                    );
+                    window.databaseArray.push(...newRecords);
+
+                    // Persist
+                    if (typeof updateDataState === 'function') {
+                        updateDataState(window.databaseArray, true);
+                    } else {
+                        localStorage.setItem(ULTIMATE_BUDGET_LOCAL_KEY, JSON.stringify(window.databaseArray));
+                    }
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
+                    }
+                }
+
                 appState = {
                     name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
                     accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
@@ -12225,7 +12270,8 @@
                     netWorthData: { activeYear: new Date().getFullYear(), items: [] },
                     notifications: { active: [], archived: [] },
                     categories: { income: [], savings: [], bills: [], subscription: [], debt: [], expense: [], bank_accounts: [], credit_cards: [] },
-                    transactions: [], budgetPeriods: [], savingsGoals: {}, debts: []
+                    transactions: [], budgetPeriods: [], savingsGoals: {}, debts: [],
+                    calendarStartOnMonday: true
                 };
 
                 const activeRecords = (window.databaseArray || []).filter(r => r && !r.deleted);
@@ -12237,14 +12283,23 @@
                     if (basic.data.name !== undefined) appState.name = basic.data.name;
                 }
 
-                const fifty = activeRecords.find(r => r.id === 'config_fifty');
-                if (fifty && fifty.data) {
-                    appState.fiftyNeedsTarget = fifty.data.needsTarget !== undefined ? fifty.data.needsTarget : 50;
-                    appState.fiftyWantsTarget = fifty.data.wantsTarget !== undefined ? fifty.data.wantsTarget : 30;
-                    appState.fiftySavingsTarget = fifty.data.savingsTarget !== undefined ? fifty.data.savingsTarget : 20;
-                    appState.fiftyMapping = fifty.data.mapping || {};
-                    appState.fiftyActivePeriodId = fifty.data.activePeriodId || null;
+                const fiftyTargets = activeRecords.find(r => r.id === 'config_fifty_targets');
+                if (fiftyTargets && fiftyTargets.data) {
+                    appState.fiftyNeedsTarget = fiftyTargets.data.needsTarget !== undefined ? fiftyTargets.data.needsTarget : 50;
+                    appState.fiftyWantsTarget = fiftyTargets.data.wantsTarget !== undefined ? fiftyTargets.data.wantsTarget : 30;
+                    appState.fiftySavingsTarget = fiftyTargets.data.savingsTarget !== undefined ? fiftyTargets.data.savingsTarget : 20;
                 }
+
+                const fiftyPeriod = activeRecords.find(r => r.id === 'config_fifty_active_period');
+                if (fiftyPeriod && fiftyPeriod.data) {
+                    appState.fiftyActivePeriodId = fiftyPeriod.data.activePeriodId || null;
+                }
+
+                appState.fiftyMapping = {};
+                activeRecords.filter(r => r.table === 'fifty_mappings' && r.data).forEach(r => {
+                    const key = `${r.data.category.toLowerCase()}_${r.data.subcategory.toLowerCase()}`;
+                    appState.fiftyMapping[key] = r.data.segment;
+                });
 
                 const nospend = activeRecords.find(r => r.id === 'config_nospend');
                 if (nospend && nospend.data) {
@@ -12353,6 +12408,10 @@
 
                 appState.netWorthData.items = activeRecords.filter(r => r && r.table === 'networth_items' && r.data)
                     .map(r => ({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data }));
+
+                if (typeof calendarState !== 'undefined') {
+                    calendarState.startOnMonday = appState.calendarStartOnMonday !== undefined ? appState.calendarStartOnMonday : true;
+                }
             } catch (err) {
                 console.error("Error building appState from database array:", err);
             }
@@ -12375,11 +12434,29 @@
                 userName: appState.name || '', name: appState.name || '', currency: appState.currency, initialBalance: appState.initialBalance,
                 budgetingMethod: appState.budgetingMethod, accountStartDate: appState.accountStartDate,
                 accountStartBalances: appState.accountStartBalances, accountIcons: appState.accountIcons,
-                annualStartMonth: appState.annualStartMonth, reviewNotifSent: appState.reviewNotifSent, cleared: appState.cleared
+                annualStartMonth: appState.annualStartMonth, reviewNotifSent: appState.reviewNotifSent, cleared: appState.cleared,
+                calendarStartOnMonday: appState.calendarStartOnMonday
             });
-            upsertEnvelope('config_fifty', 'config_fifty', {
-                needsTarget: appState.fiftyNeedsTarget, wantsTarget: appState.fiftyWantsTarget,
-                savingsTarget: appState.fiftySavingsTarget, mapping: appState.fiftyMapping, activePeriodId: appState.fiftyActivePeriodId
+            upsertEnvelope('config_fifty_targets', 'config_fifty_targets', {
+                needsTarget: appState.fiftyNeedsTarget,
+                wantsTarget: appState.fiftyWantsTarget,
+                savingsTarget: appState.fiftySavingsTarget
+            });
+            upsertEnvelope('config_fifty_active_period', 'config_fifty_active_period', {
+                activePeriodId: appState.fiftyActivePeriodId
+            });
+
+            const categoriesToMap = ['bills', 'subscription', 'debt', 'savings', 'expense'];
+            categoriesToMap.forEach(cat => {
+                const subcategories = appState.categories[cat] || [];
+                subcategories.forEach(sub => {
+                    const key = `${cat.toLowerCase()}_${sub.toLowerCase()}`;
+                    if (appState.fiftyMapping && appState.fiftyMapping[key] && appState.fiftyMapping[key] !== 'unassigned') {
+                        const val = appState.fiftyMapping[key];
+                        const id = `fifty_map_${cat}_${sub}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                        upsertEnvelope(id, 'fifty_mappings', { category: cat, subcategory: sub, segment: val });
+                    }
+                });
             });
             upsertEnvelope('config_nospend', 'config_nospend', {
                 exclusions: appState.noSpendExclusions, goals: appState.noSpendGoals, personalBest: appState.noSpendPersonalBest
@@ -12535,6 +12612,7 @@
             noSpendPersonalBest: 0,
             reviewNotifSent: 0,
             debts: [],
+            calendarStartOnMonday: true,
             debtStrategy: "snowball",
             debtExtraPayment: 0,
             debtStartMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
@@ -16775,7 +16853,9 @@
             }
             if (weekStartBtn) {
                 weekStartBtn.addEventListener('click', () => {
-                    calendarState.startOnMonday = !calendarState.startOnMonday;
+                    appState.calendarStartOnMonday = !appState.calendarStartOnMonday;
+                    calendarState.startOnMonday = appState.calendarStartOnMonday;
+                    saveStateToLocalStorage();
                     renderCalendarGrid();
                     renderNoSpendChallenge();
                 });
