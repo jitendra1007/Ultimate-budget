@@ -12093,6 +12093,16 @@
         const ULTIMATE_BUDGET_LOCAL_KEY = 'ultimatebudget_local_data';
         const ULTIMATE_BUDGET_EXPORT_FILE = 'ultimatebudget_export.json';
 
+        function createUpdatedKeys(data, time) {
+            const keys = {};
+            if (data) {
+                Object.keys(data).forEach(k => {
+                    keys[k] = time;
+                });
+            }
+            return keys;
+        }
+
         const DEFAULT_DATABASE = [
             {
                 id: 'config_basic', table: 'config_basic', updatedAt: 0, deleted: false,
@@ -12101,31 +12111,38 @@
                     accountStartDate: '', accountStartBalances: {}, accountIcons: {},
                     annualStartMonth: '', reviewNotifSent: 0, cleared: true,
                     calendarStartOnMonday: true
-                }
+                },
+                updatedKeys: {}
             },
             {
                 id: 'config_fifty', table: 'config_fifty', updatedAt: 0, deleted: false,
-                data: { needsTarget: 50, wantsTarget: 30, savingsTarget: 20, mapping: {}, activePeriodId: null }
+                data: { needsTarget: 50, wantsTarget: 30, savingsTarget: 20, mapping: {}, activePeriodId: null },
+                updatedKeys: {}
             },
             {
                 id: 'config_nospend', table: 'config_nospend', updatedAt: 0, deleted: false,
-                data: { exclusions: ['Rent', 'Electricity', 'Netflix', 'Spotify', 'Student Loan'], goals: {}, personalBest: 0 }
+                data: { exclusions: ['Rent', 'Electricity', 'Netflix', 'Spotify', 'Student Loan'], goals: {}, personalBest: 0 },
+                updatedKeys: {}
             },
             {
                 id: 'config_debt', table: 'config_debt', updatedAt: 0, deleted: false,
-                data: { strategy: 'snowball', extraPayment: 0, startMonth: '', customPriority: [], adjustments: {} }
+                data: { strategy: 'snowball', extraPayment: 0, startMonth: '', customPriority: [], adjustments: {} },
+                updatedKeys: {}
             },
             {
                 id: 'config_networth', table: 'config_networth', updatedAt: 0, deleted: false,
-                data: { activeYear: new Date().getFullYear() }
+                data: { activeYear: new Date().getFullYear() },
+                updatedKeys: {}
             },
             {
                 id: 'config_recurring_paid', table: 'config_recurring_paid', updatedAt: 0, deleted: false,
-                data: {}
+                data: {},
+                updatedKeys: {}
             },
             {
                 id: 'config_deleted_recurring', table: 'config_deleted_recurring', updatedAt: 0, deleted: false,
-                data: {}
+                data: {},
+                updatedKeys: {}
             },
         ];
 
@@ -12141,23 +12158,27 @@
                     
                     activeList.forEach((notif, idx) => {
                         const id = notif.id || `notif_migrated_active_${timestamp}_${idx}`;
+                        const rData = { ...notif, id, status: 'active', timestamp: notif.timestamp || timestamp };
                         newRecords.push({
                             id,
                             table: 'notifications',
                             updatedAt: timestamp,
                             deleted: false,
-                            data: { ...notif, id, status: 'active', timestamp: notif.timestamp || timestamp }
+                            data: rData,
+                            updatedKeys: createUpdatedKeys(rData, timestamp)
                         });
                     });
                     
                     archivedList.forEach((notif, idx) => {
                         const id = notif.id || `notif_migrated_arch_${timestamp}_${idx}`;
+                        const rData = { ...notif, id, status: 'archived', timestamp: notif.timestamp || timestamp };
                         newRecords.push({
                             id,
                             table: 'notifications',
                             updatedAt: timestamp,
                             deleted: false,
-                            data: { ...notif, id, status: 'archived', timestamp: notif.timestamp || timestamp }
+                            data: rData,
+                            updatedKeys: createUpdatedKeys(rData, timestamp)
                         });
                     });
                     
@@ -12182,20 +12203,26 @@
                 const oldDebtCfg = (window.databaseArray || []).find(r => r && r.id === 'config_debt' && !r.deleted);
                 if (oldDebtCfg && oldDebtCfg.data) {
                     const timestamp = Date.now();
+                    const sData = { strategy: oldDebtCfg.data.strategy || "snowball" };
+                    const eData = { extraPayment: oldDebtCfg.data.extraPayment || 0 };
+                    const startData = { startMonth: oldDebtCfg.data.startMonth || "" };
+                    const pData = { customPriority: oldDebtCfg.data.customPriority || [] };
                     const newRecords = [
-                        { id: 'config_debt_strategy', table: 'config_debt_strategy', updatedAt: timestamp, deleted: false, data: { strategy: oldDebtCfg.data.strategy || "snowball" } },
-                        { id: 'config_debt_extra', table: 'config_debt_extra', updatedAt: timestamp, deleted: false, data: { extraPayment: oldDebtCfg.data.extraPayment || 0 } },
-                        { id: 'config_debt_start', table: 'config_debt_start', updatedAt: timestamp, deleted: false, data: { startMonth: oldDebtCfg.data.startMonth || "" } },
-                        { id: 'config_debt_priority', table: 'config_debt_priority', updatedAt: timestamp, deleted: false, data: { customPriority: oldDebtCfg.data.customPriority || [] } }
+                        { id: 'config_debt_strategy', table: 'config_debt_strategy', updatedAt: timestamp, deleted: false, data: sData, updatedKeys: createUpdatedKeys(sData, timestamp) },
+                        { id: 'config_debt_extra', table: 'config_debt_extra', updatedAt: timestamp, deleted: false, data: eData, updatedKeys: createUpdatedKeys(eData, timestamp) },
+                        { id: 'config_debt_start', table: 'config_debt_start', updatedAt: timestamp, deleted: false, data: startData, updatedKeys: createUpdatedKeys(startData, timestamp) },
+                        { id: 'config_debt_priority', table: 'config_debt_priority', updatedAt: timestamp, deleted: false, data: pData, updatedKeys: createUpdatedKeys(pData, timestamp) }
                     ];
 
                     Object.keys(oldDebtCfg.data.adjustments || {}).forEach(monthStr => {
+                        const adjData = { month: monthStr, amount: oldDebtCfg.data.adjustments[monthStr] };
                         newRecords.push({
                             id: `debt_adj_${monthStr}`,
                             table: 'debt_adjustments',
                             updatedAt: timestamp,
                             deleted: false,
-                            data: { month: monthStr, amount: oldDebtCfg.data.adjustments[monthStr] }
+                            data: adjData,
+                            updatedKeys: createUpdatedKeys(adjData, timestamp)
                         });
                     });
 
@@ -12220,9 +12247,11 @@
                 const oldFifty = (window.databaseArray || []).find(r => r && r.id === 'config_fifty' && !r.deleted);
                 if (oldFifty && oldFifty.data) {
                     const timestamp = Date.now();
+                    const tData = { needsTarget: oldFifty.data.needsTarget !== undefined ? oldFifty.data.needsTarget : 50, wantsTarget: oldFifty.data.wantsTarget !== undefined ? oldFifty.data.wantsTarget : 30, savingsTarget: oldFifty.data.savingsTarget !== undefined ? oldFifty.data.savingsTarget : 20 };
+                    const apData = { activePeriodId: oldFifty.data.activePeriodId || null };
                     const newRecords = [
-                        { id: 'config_fifty_targets', table: 'config_fifty_targets', updatedAt: timestamp, deleted: false, data: { needsTarget: oldFifty.data.needsTarget !== undefined ? oldFifty.data.needsTarget : 50, wantsTarget: oldFifty.data.wantsTarget !== undefined ? oldFifty.data.wantsTarget : 30, savingsTarget: oldFifty.data.savingsTarget !== undefined ? oldFifty.data.savingsTarget : 20 } },
-                        { id: 'config_fifty_active_period', table: 'config_fifty_active_period', updatedAt: timestamp, deleted: false, data: { activePeriodId: oldFifty.data.activePeriodId || null } }
+                        { id: 'config_fifty_targets', table: 'config_fifty_targets', updatedAt: timestamp, deleted: false, data: tData, updatedKeys: createUpdatedKeys(tData, timestamp) },
+                        { id: 'config_fifty_active_period', table: 'config_fifty_active_period', updatedAt: timestamp, deleted: false, data: apData, updatedKeys: createUpdatedKeys(apData, timestamp) }
                     ];
 
                     // Convert mapping
@@ -12234,12 +12263,14 @@
                             const cat = key.substring(0, idx);
                             const sub = key.substring(idx + 1);
                             const id = `fifty_map_${cat}_${sub}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                            const mapData = { category: cat, subcategory: sub, segment: val };
                             newRecords.push({
                                 id,
                                 table: 'fifty_mappings',
                                 updatedAt: timestamp,
                                 deleted: false,
-                                data: { category: cat, subcategory: sub, segment: val }
+                                data: mapData,
+                                updatedKeys: createUpdatedKeys(mapData, timestamp)
                             });
                         }
                     });
@@ -12279,7 +12310,7 @@
 
                 const basic = activeRecords.find(r => r.id === 'config_basic');
                 if (basic && basic.data) {
-                    Object.assign(appState, basic.data);
+                    Object.assign(appState, JSON.parse(JSON.stringify(basic.data)));
                     if (basic.data.userName !== undefined) appState.name = basic.data.userName;
                     if (basic.data.name !== undefined) appState.name = basic.data.name;
                     if (basic.data.initialBalance === undefined && basic.data.startBalance !== undefined) {
@@ -12411,10 +12442,10 @@
                 });
 
                 appState.debts = activeRecords.filter(r => r && r.table === 'debts' && r.data)
-                    .map(r => ({ ...r.data, id: r.id ? r.id.replace('debt_', '') : '' }));
+                    .map(r => JSON.parse(JSON.stringify({ ...r.data, id: r.id ? r.id.replace('debt_', '') : '' })));
 
                 appState.netWorthData.items = activeRecords.filter(r => r && r.table === 'networth_items' && r.data)
-                    .map(r => ({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data }));
+                    .map(r => JSON.parse(JSON.stringify({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data })));
 
                 if (typeof calendarState !== 'undefined') {
                     calendarState.startOnMonday = appState.calendarStartOnMonday !== undefined ? appState.calendarStartOnMonday : true;
@@ -12433,8 +12464,39 @@
             function upsertEnvelope(id, table, data) {
                 newActiveIds.add(id);
                 const existing = activeMap.get(id);
-                if (existing && JSON.stringify(existing.data) === JSON.stringify(data)) return;
-                envelopesToUpsert.push({ id, table, updatedAt: timestamp, deleted: false, data });
+                
+                let updatedKeys = {};
+                if (existing) {
+                    updatedKeys = { ...(existing.updatedKeys || {}) };
+                    if (!existing.updatedKeys && existing.data) {
+                        Object.keys(existing.data).forEach(k => {
+                            updatedKeys[k] = existing.updatedAt || 0;
+                        });
+                    }
+                }
+                
+                let hasChanges = false;
+                const allKeys = new Set([...Object.keys(data), ...Object.keys(existing?.data || {})]);
+                
+                allKeys.forEach(k => {
+                    const newVal = data[k];
+                    const oldVal = existing?.data?.[k];
+                    if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
+                        updatedKeys[k] = timestamp;
+                        hasChanges = true;
+                    }
+                });
+                
+                if (existing && !hasChanges) return;
+                
+                envelopesToUpsert.push({ 
+                    id, 
+                    table, 
+                    updatedAt: timestamp, 
+                    deleted: false, 
+                    data, 
+                    updatedKeys 
+                });
             }
 
             upsertEnvelope('config_basic', 'config_basic', {
@@ -13034,7 +13096,18 @@
                     const timestamp = Date.now();
                     
                     // Set updated timestamps on all imported records
-                    const updatedImported = importedData.map(item => Object.assign({}, item, { updatedAt: timestamp }));
+                    const updatedImported = importedData.map(item => {
+                        const newUpdatedKeys = {};
+                        if (item.data) {
+                            Object.keys(item.data).forEach(k => {
+                                newUpdatedKeys[k] = timestamp;
+                            });
+                        }
+                        return Object.assign({}, item, { 
+                            updatedAt: timestamp,
+                            updatedKeys: newUpdatedKeys
+                        });
+                    });
                     const importedIds = new Set(updatedImported.map(item => item.id));
 
                     // Soft-delete items that exist locally but are missing from the imported backup
@@ -23632,7 +23705,13 @@
 
                 (window.databaseArray || []).forEach(r => {
                     if (defaultsMap.has(r.id)) {
-                        newDb.push({ ...defaultsMap.get(r.id), updatedAt: timestamp });
+                        const def = defaultsMap.get(r.id);
+                        const defData = def.data || {};
+                        const updatedKeys = {};
+                        Object.keys(defData).forEach(k => {
+                            updatedKeys[k] = timestamp;
+                        });
+                        newDb.push({ ...def, updatedAt: timestamp, updatedKeys });
                     } else {
                         newDb.push({ ...r, updatedAt: timestamp, deleted: true });
                     }
@@ -23949,6 +24028,63 @@
                     return isNaN(num) ? 0 : num;
                 };
 
+                const mergeEnvelopes = (local, cloud) => {
+                    const localTime = getSafeTime(local.updatedAt);
+                    const cloudTime = getSafeTime(cloud.updatedAt);
+
+                    const localData = local.data || {};
+                    const cloudData = cloud.data || {};
+                    const allKeys = new Set([...Object.keys(localData), ...Object.keys(cloudData)]);
+
+                    const mergedData = {};
+                    const mergedUpdatedKeys = {};
+
+                    allKeys.forEach(k => {
+                        const localFieldTime = (local.updatedKeys && local.updatedKeys[k] !== undefined)
+                            ? getSafeTime(local.updatedKeys[k])
+                            : localTime;
+                        
+                        const cloudFieldTime = (cloud.updatedKeys && cloud.updatedKeys[k] !== undefined)
+                            ? getSafeTime(cloud.updatedKeys[k])
+                            : cloudTime;
+
+                        const hasLocal = k in localData;
+                        const hasCloud = k in cloudData;
+
+                        if (hasLocal && (!hasCloud || localFieldTime >= cloudFieldTime)) {
+                            mergedData[k] = localData[k];
+                            mergedUpdatedKeys[k] = localFieldTime;
+                        } else if (hasCloud) {
+                            mergedData[k] = cloudData[k];
+                            mergedUpdatedKeys[k] = cloudFieldTime;
+                        }
+                    });
+
+                    let mergedDeleted = false;
+                    if (local.deleted === cloud.deleted) {
+                        mergedDeleted = local.deleted;
+                    } else {
+                        if (localTime >= cloudTime) {
+                            mergedDeleted = local.deleted;
+                        } else {
+                            mergedDeleted = cloud.deleted;
+                        }
+                    }
+
+                    const fieldTimes = Object.values(mergedUpdatedKeys);
+                    const maxFieldTime = fieldTimes.length > 0 ? Math.max(...fieldTimes) : 0;
+                    const mergedUpdatedAt = Math.max(localTime, cloudTime, maxFieldTime);
+
+                    return {
+                        id: local.id,
+                        table: local.table,
+                        updatedAt: mergedUpdatedAt,
+                        deleted: mergedDeleted,
+                        data: mergedData,
+                        updatedKeys: mergedUpdatedKeys
+                    };
+                };
+
                 const response = await gapi.client.drive.files.list({
                     q: "name = " + String.fromCharCode(39) + ULTIMATE_BUDGET_FILE_NAME + String.fromCharCode(39) + " and trashed = false",
                     spaces: 'appDataFolder',
@@ -23978,12 +24114,39 @@
                         let localHasNewerEdits = false;
                         (window.databaseArray || []).forEach(localItem => {
                             const cloudItem = mergedMap.get(localItem.id);
-                            // If local item is newer, or it doesn't exist in the cloud yet, local wins
-                            const localTime = getSafeTime(localItem.updatedAt);
-                            const cloudTime = cloudItem ? getSafeTime(cloudItem.updatedAt) : 0;
-                            if (!cloudItem || localTime > cloudTime) {
+                            if (!cloudItem) {
                                 mergedMap.set(localItem.id, localItem);
                                 localHasNewerEdits = true;
+                            } else {
+                                const mergedItem = mergeEnvelopes(localItem, cloudItem);
+                                mergedMap.set(localItem.id, mergedItem);
+                                
+                                let hasDiff = mergedItem.deleted !== cloudItem.deleted;
+                                if (!hasDiff) {
+                                    const cloudData = cloudItem.data || {};
+                                    const mergedData = mergedItem.data || {};
+                                    const cloudKeys = Object.keys(cloudData);
+                                    const mergedKeys = Object.keys(mergedData);
+                                    if (cloudKeys.length !== mergedKeys.length) {
+                                        hasDiff = true;
+                                    } else {
+                                        for (const k of mergedKeys) {
+                                            if (JSON.stringify(mergedData[k]) !== JSON.stringify(cloudData[k])) {
+                                                hasDiff = true;
+                                                break;
+                                            }
+                                            const mTime = mergedItem.updatedKeys[k];
+                                            const cTime = cloudItem.updatedKeys ? cloudItem.updatedKeys[k] : undefined;
+                                            if (mTime !== cTime) {
+                                                hasDiff = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (hasDiff) {
+                                    localHasNewerEdits = true;
+                                }
                             }
                         });
 
@@ -23999,11 +24162,7 @@
 
                         // Persist any in-memory modifications made by the render cycle
                         // (e.g., syncSettingsToNetWorth updates appState.netWorthData.items)
-                        // Pass false to skip scheduleCloudSync and avoid infinite sync loop
-                        if (typeof syncAppStateToDatabase === 'function') {
-                            syncAppStateToDatabase(false);
-                        }
-
+                        
                         if (localHasNewerEdits) {
                             success = await autoUploadToCloud();
                         }
