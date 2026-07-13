@@ -10454,8 +10454,8 @@
                             Add Item
                         </button>
                         <div class="sync-status-badge sync-status" style="display: none;"></div>
-                        <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-2 shadow-xl transition-all duration-200 z-50 hidden"
-                            id="nwAddItemMenu" style="opacity: 0; transform: translateY(8px);">
+                        <div class="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-2 shadow-xl transition-all duration-200 z-50 hidden"
+                            id="nwAddItemMenu" style="top: 100% !important; opacity: 0; transform: translateY(8px);">
                             <div
                                 class="px-3 py-2 text-[10px] font-bold text-on-surface-variant opacity-60 uppercase tracking-widest">
                                 Assets</div>
@@ -15459,7 +15459,7 @@
             const todayStr = getTodayLocalStr();
             periods.forEach(p => {
                 const periodTxs = txs.filter(t => t.parsedDate >= p.start && t.parsedDate <= p.end);
-                const spent = periodTxs.filter(t => t.category !== 'Income').reduce((s, t) => s + t.amount, 0);
+                const spent = periodTxs.filter(t => t.category !== 'Income' && t.paid).reduce((s, t) => s + t.amount, 0);
                 const target = p.settings.filter(s => s.category !== 'Income').reduce((s, i) => s + i.amount, 0);
                 const pct = target > 0 ? (spent / target) * 100 : 0;
                 const isOver = spent > target;
