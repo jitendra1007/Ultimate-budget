@@ -5449,6 +5449,12 @@
             border: 1px solid rgba(255, 255, 255, 0.5) !important;
         }
 
+        @media (max-width: 768px) {
+            .bva-progress-bar {
+                display: none !important;
+            }
+        }
+
         .glow-progress-fill {
             height: 100% !important;
             border-radius: 9999px !important;
@@ -10448,7 +10454,7 @@
                             Add Item
                         </button>
                         <div class="sync-status-badge sync-status" style="display: none;"></div>
-                        <div class="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-2 shadow-xl transition-all duration-200 z-50 hidden"
+                        <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-2 shadow-xl transition-all duration-200 z-50 hidden"
                             id="nwAddItemMenu" style="opacity: 0; transform: translateY(8px);">
                             <div
                                 class="px-3 py-2 text-[10px] font-bold text-on-surface-variant opacity-60 uppercase tracking-widest">
@@ -15647,7 +15653,7 @@
                             </td>
                             <td class="py-5 px-4 pl-10">
                                 <div class="flex items-center gap-4">
-                                    <div class="flex-1 glow-progress-track">
+                                    <div class="flex-1 glow-progress-track bva-progress-bar">
                                         <div class="glow-progress-fill" style="width: ${Math.max(0, Math.min(100, progressVal))}%; ${progressGradient}"></div>
                                     </div>
                                     <span class="text-[10px] font-black text-slate-500 tabular-nums w-10">${progressText}</span>
@@ -15808,7 +15814,7 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="flex-1 glow-progress-track" style="height: 4px !important; margin: 0 6px !important;">
+                        <div class="flex-1 glow-progress-track bva-progress-bar" style="height: 4px !important; margin: 0 6px !important;">
                             <div class="glow-progress-fill" style="width: ${Math.max(0, Math.min(100, percentVal))}%; background: linear-gradient(90deg, ${gradColors.start}, ${gradColors.end}) !important;"></div>
                         </div>
                         <div class="text-right flex items-center justify-end" style="text-align: right !important; flex: 0 0 50px; shrink-0;">
