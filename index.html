@@ -11057,7 +11057,7 @@
                         marked as paid will not be affected.
                     </p>
                 </div>
-                <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide" id="recurring-schedule-list">
+                <div class="space-y-4 max-h-[280px] overflow-y-auto pr-1 scrollbar-hide" id="recurring-schedule-list">
                     <!-- Populated dynamically -->
                 </div>
                 <div class="pt-4">
@@ -11441,7 +11441,8 @@
                 <button class="material-symbols-outlined modal-close-btn"
                     onclick="closeModal('modal-start-balance')">close</button>
             </div>
-            <div class="p-6 sm:p-8 space-y-4 sm:space-y-6 max-h-[50vh] sm:max-h-[70vh] overflow-y-auto scrollbar-hide" id="start-balance-modal-body">
+            <div class="p-6 sm:p-8 space-y-4 sm:space-y-6 max-h-[50vh] sm:max-h-[70vh] overflow-y-auto scrollbar-hide"
+                id="start-balance-modal-body">
                 <!-- Dynamically generated bank accounts and credit cards inputs -->
             </div>
             <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
@@ -12155,7 +12156,7 @@
                     const activeList = oldNotifs.data.active || [];
                     const archivedList = oldNotifs.data.archived || [];
                     const newRecords = [];
-                    
+
                     activeList.forEach((notif, idx) => {
                         const id = notif.id || `notif_migrated_active_${timestamp}_${idx}`;
                         const rData = { ...notif, id, status: 'active', timestamp: notif.timestamp || timestamp };
@@ -12168,7 +12169,7 @@
                             updatedKeys: createUpdatedKeys(rData, timestamp)
                         });
                     });
-                    
+
                     archivedList.forEach((notif, idx) => {
                         const id = notif.id || `notif_migrated_arch_${timestamp}_${idx}`;
                         const rData = { ...notif, id, status: 'archived', timestamp: notif.timestamp || timestamp };
@@ -12181,13 +12182,13 @@
                             updatedKeys: createUpdatedKeys(rData, timestamp)
                         });
                     });
-                    
+
                     // Update databaseArray
-                    window.databaseArray = (window.databaseArray || []).map(r => 
+                    window.databaseArray = (window.databaseArray || []).map(r =>
                         r.id === 'config_notifications' ? { ...r, deleted: true, updatedAt: timestamp } : r
                     );
                     window.databaseArray.push(...newRecords);
-                    
+
                     // Persist
                     if (typeof updateDataState === 'function') {
                         updateDataState(window.databaseArray, true);
@@ -12227,7 +12228,7 @@
                     });
 
                     // Update databaseArray
-                    window.databaseArray = (window.databaseArray || []).map(r => 
+                    window.databaseArray = (window.databaseArray || []).map(r =>
                         r.id === 'config_debt' ? { ...r, deleted: true, updatedAt: timestamp } : r
                     );
                     window.databaseArray.push(...newRecords);
@@ -12276,7 +12277,7 @@
                     });
 
                     // Update databaseArray
-                    window.databaseArray = (window.databaseArray || []).map(r => 
+                    window.databaseArray = (window.databaseArray || []).map(r =>
                         r.id === 'config_fifty' ? { ...r, deleted: true, updatedAt: timestamp } : r
                     );
                     window.databaseArray.push(...newRecords);
@@ -12464,7 +12465,7 @@
             function upsertEnvelope(id, table, data) {
                 newActiveIds.add(id);
                 const existing = activeMap.get(id);
-                
+
                 let updatedKeys = {};
                 if (existing) {
                     updatedKeys = { ...(existing.updatedKeys || {}) };
@@ -12474,10 +12475,10 @@
                         });
                     }
                 }
-                
+
                 let hasChanges = false;
                 const allKeys = new Set([...Object.keys(data), ...Object.keys(existing?.data || {})]);
-                
+
                 allKeys.forEach(k => {
                     const newVal = data[k];
                     const oldVal = existing?.data?.[k];
@@ -12486,16 +12487,16 @@
                         hasChanges = true;
                     }
                 });
-                
+
                 if (existing && !hasChanges) return;
-                
-                envelopesToUpsert.push({ 
-                    id, 
-                    table, 
-                    updatedAt: timestamp, 
-                    deleted: false, 
-                    data, 
-                    updatedKeys 
+
+                envelopesToUpsert.push({
+                    id,
+                    table,
+                    updatedAt: timestamp,
+                    deleted: false,
+                    data,
+                    updatedKeys
                 });
             }
 
@@ -13094,7 +13095,7 @@
                     }
 
                     const timestamp = Date.now();
-                    
+
                     // Set updated timestamps on all imported records
                     const updatedImported = importedData.map(item => {
                         const newUpdatedKeys = {};
@@ -13103,7 +13104,7 @@
                                 newUpdatedKeys[k] = timestamp;
                             });
                         }
-                        return Object.assign({}, item, { 
+                        return Object.assign({}, item, {
                             updatedAt: timestamp,
                             updatedKeys: newUpdatedKeys
                         });
@@ -13118,15 +13119,14 @@
 
                     window.databaseArray = [...updatedImported, ...oldDataDeleted];
                     updateDataState(window.databaseArray, true);
-                    
+
                     if (typeof scheduleCloudSync === 'function') {
                         scheduleCloudSync();
                     }
 
-                    showToast("Database imported successfully! Reloading...", "success");
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    buildAppStateFromDatabase();
+                    refreshCurrentView();
+                    showToast("Database imported successfully!", "success");
                 } catch (err) {
                     console.error("Import failed", err);
                     showToast("Import failed: " + err.message, "error");
@@ -13240,9 +13240,11 @@
             } else if (tabId === 'accounts') {
                 updateAccountsView();
             } else if (tabId === 'budgets') {
-                budgetState.activeTab = 'budgets';
                 if (!preserveState) {
+                    budgetState.activeTab = 'budgets';
                     budgetState.activeBudgetPeriodId = null;
+                } else if (!budgetState.activeTab) {
+                    budgetState.activeTab = 'budgets';
                 }
                 renderBudgetsView();
             } else if (tabId === 'calendar') {
@@ -15429,6 +15431,11 @@
                 renderBudgetDetailsView(container, activePeriod, txs, config);
             } else {
                 renderBudgetsListView(container, periods, txs, config);
+            }
+
+            // Restore sync status badge value for dynamically rendered screens
+            if (currentSyncStatusText) {
+                setSyncStatus(currentSyncStatusText, currentSyncStatusType);
             }
         }
 
@@ -23724,6 +23731,7 @@
                 buildAppStateFromDatabase();
                 if (typeof initUI === 'function') initUI();
                 if (typeof renderSettingsView === 'function') renderSettingsView();
+                refreshCurrentView();
                 showToast("All data cleared successfully.", "success");
             }
         }
@@ -24043,7 +24051,7 @@
                         const localFieldTime = (local.updatedKeys && local.updatedKeys[k] !== undefined)
                             ? getSafeTime(local.updatedKeys[k])
                             : localTime;
-                        
+
                         const cloudFieldTime = (cloud.updatedKeys && cloud.updatedKeys[k] !== undefined)
                             ? getSafeTime(cloud.updatedKeys[k])
                             : cloudTime;
@@ -24120,7 +24128,7 @@
                             } else {
                                 const mergedItem = mergeEnvelopes(localItem, cloudItem);
                                 mergedMap.set(localItem.id, mergedItem);
-                                
+
                                 let hasDiff = mergedItem.deleted !== cloudItem.deleted;
                                 if (!hasDiff) {
                                     const cloudData = cloudItem.data || {};
@@ -24162,7 +24170,7 @@
 
                         // Persist any in-memory modifications made by the render cycle
                         // (e.g., syncSettingsToNetWorth updates appState.netWorthData.items)
-                        
+
                         if (localHasNewerEdits) {
                             success = await autoUploadToCloud();
                         }
