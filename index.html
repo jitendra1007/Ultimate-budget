@@ -6229,15 +6229,15 @@
         }
 
         .event-subscription {
-            background: #f5f3ff;
-            color: #7c3aed;
-            border-color: #ede9fe;
+            background: #eef2ff;
+            color: #4f46e5;
+            border-color: #e0e7ff;
         }
 
         .event-expense {
-            background: #fdf2f8;
-            color: #db2777;
-            border-color: #fce7f3;
+            background: #f5f3ff;
+            color: #7c3aed;
+            border-color: #ede9fe;
         }
 
         .event-transfer {
@@ -13260,7 +13260,7 @@
             } else if (tabId === 'dashboard') {
                 renderAnnualDashboardView();
             } else if (tabId === 'savings') {
-                renderSavingsTrackerView();
+                renderSavingsTrackerView(preserveState);
             } else if (tabId === 'debt') {
                 renderDebtTrackerView();
             } else if (tabId === 'notifications') {
@@ -18127,7 +18127,7 @@
             return dateStr;
         }
 
-        function renderSavingsTrackerView() {
+        function renderSavingsTrackerView(skipAnimation = false) {
             // Ensure goals are loaded and synchronized
             if (!appState.savingsGoals) appState.savingsGoals = {};
             const categories = appState.categories.savings || [];
@@ -18375,16 +18375,18 @@
             }
             document.getElementById('savings-momentum-text').innerHTML = momentumHtml;
             // Stagger entrance animation for cards
-            document.querySelectorAll('#view-savings .glass-card, #view-savings .futuristic-card').forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                card.style.transition = 'none';
-                setTimeout(() => {
-                    card.style.transition = 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 80);
-            });
+            if (!skipAnimation) {
+                document.querySelectorAll('#view-savings .glass-card, #view-savings .futuristic-card').forEach((card, index) => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.style.transition = 'none';
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, index * 80);
+                });
+            }
 
             // Adjust card amounts dynamically based on space
             if (typeof window.adjustSavingsCardAmounts === "function") {
@@ -18445,7 +18447,7 @@
 
             saveStateToLocalStorage();
             closeModal('edit-savings-goal-modal');
-            renderSavingsTrackerView();
+            renderSavingsTrackerView(true);
             showToast("Goal changes saved successfully!", "success");
         }
 
@@ -18510,7 +18512,7 @@
             });
             saveStateToLocalStorage();
             closeModal('optimize-contributions-modal');
-            renderSavingsTrackerView();
+            renderSavingsTrackerView(true);
             showToast("Monthly contributions optimized successfully!", "success");
         }
 
