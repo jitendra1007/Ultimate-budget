@@ -9113,6 +9113,7 @@
                                                 class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">calendar_today</span>
                                             <input type="date" id="filter-start-date"
                                                 class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                onclick="if (typeof this.showPicker === 'function') this.showPicker()"
                                                 onchange="updateFilterDateDisplay('start'); renderTransactionsTable()"
                                                 onfocus="document.getElementById('filter-start-date-display').classList.add('ring-2', 'ring-primary')"
                                                 onblur="document.getElementById('filter-start-date-display').classList.remove('ring-2', 'ring-primary')">
@@ -9131,6 +9132,7 @@
                                                 class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">calendar_today</span>
                                             <input type="date" id="filter-end-date"
                                                 class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                onclick="if (typeof this.showPicker === 'function') this.showPicker()"
                                                 onchange="updateFilterDateDisplay('end'); renderTransactionsTable()"
                                                 onfocus="document.getElementById('filter-end-date-display').classList.add('ring-2', 'ring-primary')"
                                                 onblur="document.getElementById('filter-end-date-display').classList.remove('ring-2', 'ring-primary')">
