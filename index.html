@@ -21814,7 +21814,7 @@
             items.forEach(item => {
                 let cat = item.category;
                 if (!categorySums[cat]) categorySums[cat] = Array(12).fill(null);
-                let vals = (item.values && item.values[activeYear]) || Array(12).fill(0);
+                let vals = (item.values && item.values[activeYear]) || Array(12).fill(null);
                 for (let m = 0; m < 12; m++) {
                     let v = vals[m];
                     if (v !== null && v !== undefined && v !== "") {
@@ -21994,7 +21994,7 @@
                     let assetSum = 0;
                     let liabilitySum = 0;
                     items.forEach(item => {
-                        let vals = (item.values && item.values[y]) || Array(12).fill(0);
+                        let vals = (item.values && item.values[y]) || Array(12).fill(null);
                         let v = parseFloat(vals[11]) || 0; // Dec value
                         if (item.category === "Debts" || item.category === "Other Liabilities") {
                             liabilitySum += v;
@@ -22362,14 +22362,17 @@
             let calc = window.nwCalculatedData;
             let items = appState.netWorthData.items || [];
 
-            // Find latest non-null month index for TOTAL column
-            let latestIdx = 11;
-            for (let m = 11; m >= 0; m--) {
-                if (calc.netWorth[m] !== null) {
-                    latestIdx = m;
-                    break;
+            // Helper to find latest non-null/non-empty month index for a given values array
+            function getLatestIdx(vals) {
+                for (let m = 11; m >= 0; m--) {
+                    if (vals[m] !== null && vals[m] !== undefined && vals[m] !== "") {
+                        return m;
+                    }
                 }
+                return 11; // fallback to December
             }
+
+            let nwLatestIdx = getLatestIdx(calc.netWorth);
 
             // 1. NET WORTH ROW (Summary Row)
             let nwRowHtml = `
@@ -22379,7 +22382,7 @@
             for (let m = 0; m < 12; m++) {
                 nwRowHtml += `<td class="py-4 font-numeric-md px-4 text-right text-nw-blue font-nw-bold" style="font-size: 14px !important;">${formatNwVal(calc.netWorth[m])}</td>`;
             }
-            nwRowHtml += `<td class="py-4 font-numeric-md text-right text-nw-blue pr-4 font-nw-bold" style="font-size: 14px !important;">${formatNwVal(calc.netWorth[latestIdx])}</td></tr>`;
+            nwRowHtml += `<td class="py-4 font-numeric-md text-right text-nw-blue pr-4 font-nw-bold" style="font-size: 14px !important;">${formatNwVal(calc.netWorth[nwLatestIdx])}</td></tr>`;
             tbody.insertAdjacentHTML("beforeend", nwRowHtml);
 
             // Helper to render sections
@@ -22389,6 +22392,7 @@
                 let textClass = isLiability ? "text-nw-rose" : "text-nw-emerald";
                 let stickyBg = isLiability ? "bg-[#fffafa]/90" : "bg-[#f5fdf9]/90";
 
+                let secLatestIdx = getLatestIdx(totalRowVals);
                 let headRowHtml = `
                     <tr class="font-nw-bold ${bgClass} border-b border-slate-100">
                         <td class="py-3 font-nw-bold ${textClass} sticky left-0 ${stickyBg} z-10 px-4" style="font-size: 14px !important;">${title}</td>
@@ -22396,7 +22400,7 @@
                 for (let m = 0; m < 12; m++) {
                     headRowHtml += `<td class="py-3 px-4 font-numeric-md text-right ${textClass} font-nw-bold" style="font-size: 14px !important;">${formatNwVal(totalRowVals[m])}</td>`;
                 }
-                headRowHtml += `<td class="py-3 font-numeric-md text-right ${textClass} font-nw-bold pr-4" style="font-size: 14px !important;">${formatNwVal(totalRowVals[latestIdx])}</td></tr>`;
+                headRowHtml += `<td class="py-3 font-numeric-md text-right ${textClass} font-nw-bold pr-4" style="font-size: 14px !important;">${formatNwVal(totalRowVals[secLatestIdx])}</td></tr>`;
                 tbody.insertAdjacentHTML("beforeend", headRowHtml);
 
                 keysList.forEach(catObj => {
@@ -22404,13 +22408,14 @@
                     let catKey = catObj.key;
                     let isExpanded = expandedNwCategories.has(catKey);
 
-                    let catMonthly = calc.categorySums[catName] || Array(12).fill(0);
+                    let catMonthly = calc.categorySums[catName] || Array(12).fill(null);
 
                     let dispName = catName;
                     if (catName === "Bank Accounts") dispName = "Bank Acc.";
                     if (catName === "Other Assets") dispName = "Others";
                     if (catName === "Other Liabilities") dispName = "Others";
 
+                    let catLatestIdx = getLatestIdx(catMonthly);
                     let catRowHtml = `
                         <tr class="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 ${isExpanded ? 'expanded' : ''}" 
                             onclick="toggleLedgerRow('${catKey}', this)">
@@ -22423,7 +22428,7 @@
                     for (let m = 0; m < 12; m++) {
                         catRowHtml += `<td class="py-3 px-4 font-numeric-md text-right text-nw-dark-grey font-nw-semibold" style="font-size: 14px !important;">${formatNwVal(catMonthly[m])}</td>`;
                     }
-                    catRowHtml += `<td class="py-3 font-numeric-md text-right pr-4 text-nw-dark-grey font-nw-semibold" style="font-size: 14px !important;">${formatNwVal(catMonthly[latestIdx])}</td></tr>`;
+                    catRowHtml += `<td class="py-3 font-numeric-md text-right pr-4 text-nw-dark-grey font-nw-semibold" style="font-size: 14px !important;">${formatNwVal(catMonthly[catLatestIdx])}</td></tr>`;
                     tbody.insertAdjacentHTML("beforeend", catRowHtml);
 
                     if (isExpanded) {
@@ -22437,7 +22442,8 @@
                             tbody.insertAdjacentHTML("beforeend", emptyRow);
                         } else {
                             catItems.forEach(item => {
-                                let itemVals = (item.values && item.values[activeYear]) || Array(12).fill(0);
+                                let itemVals = (item.values && item.values[activeYear]) || Array(12).fill(null);
+                                let itemLatestIdx = getLatestIdx(itemVals);
                                 let itemRowHtml = `
                                     <tr class="sub-row bg-slate-50/10 hover:bg-slate-100/40 transition-colors cursor-pointer" 
                                         data-parent-id="${catKey}" style="display: table-row;" onclick="openNwEditModal('${item.id}')">
@@ -22451,7 +22457,7 @@
                                 for (let m = 0; m < 12; m++) {
                                     itemRowHtml += `<td class="py-2 px-4 text-right font-numeric-md text-slate-600 font-nw-normal" style="font-size: 14px !important;">${formatNwVal(itemVals[m])}</td>`;
                                 }
-                                itemRowHtml += `<td class="py-2 text-right pr-4 font-numeric-md text-slate-600 font-nw-normal" style="font-size: 14px !important;">${formatNwVal(itemVals[latestIdx])}</td></tr>`;
+                                itemRowHtml += `<td class="py-2 text-right pr-4 font-numeric-md text-slate-600 font-nw-normal" style="font-size: 14px !important;">${formatNwVal(itemVals[itemLatestIdx])}</td></tr>`;
                                 tbody.insertAdjacentHTML("beforeend", itemRowHtml);
                             });
                         }
@@ -22477,7 +22483,7 @@
 
             for (let m = 0; m < 12; m++) {
                 let input = document.getElementById(`nw-val-${m}`);
-                input.value = 0;
+                input.value = "";
                 input.disabled = false;
             }
 
@@ -22517,9 +22523,10 @@
 
             document.getElementById("nw-item-modal-year").textContent = activeYear;
 
-            let vals = (item.values && item.values[activeYear]) || Array(12).fill(0);
+            let vals = (item.values && item.values[activeYear]) || Array(12).fill(null);
             for (let m = 0; m < 12; m++) {
-                let valToShow = Math.abs(parseFloat(vals[m]) || 0);
+                let rawVal = vals[m];
+                let valToShow = (rawVal === null || rawVal === undefined || rawVal === "") ? "" : Math.abs(parseFloat(rawVal));
                 let input = document.getElementById(`nw-val-${m}`);
                 input.value = valToShow;
                 input.disabled = isFromSettings;
@@ -22557,9 +22564,13 @@
             let isLiability = (category === "Debts" || category === "Other Liabilities");
 
             for (let m = 0; m < 12; m++) {
-                let v = parseFloat(document.getElementById(`nw-val-${m}`).value) || 0;
-                if (isLiability && v > 0) {
-                    v = -v;
+                let rawVal = document.getElementById(`nw-val-${m}`).value.trim();
+                let v = null;
+                if (rawVal !== "") {
+                    let valNum = parseFloat(rawVal);
+                    if (!isNaN(valNum)) {
+                        v = (isLiability && valNum > 0) ? -valNum : valNum;
+                    }
                 }
                 monthlyVals.push(v);
             }
