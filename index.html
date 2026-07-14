@@ -21065,14 +21065,7 @@
         }
 
         // Open Optimise Strategy modal
-        async function openOptimiseModal() {
-            if (localStorage.getItem('ultimatebudget_has_linked_google') === 'true' && accessToken) {
-                try {
-                    await pullAndMergeCloudData();
-                } catch (e) {
-                    console.error("Failed to pull cloud data before opening Optimise modal:", e);
-                }
-            }
+        function openOptimiseModal() {
             document.getElementById("optimise-start-month").value = appState.debtStartMonth || DEFAULT_STATE.debtStartMonth;
             document.getElementById("optimise-strategy-select").value = appState.debtStrategy || 'snowball';
             document.getElementById("optimise-extra-input").value = appState.debtExtraPayment || 0;
