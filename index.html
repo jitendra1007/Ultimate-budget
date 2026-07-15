@@ -22044,18 +22044,67 @@
                 }
 
                 sortedYears.forEach(y => {
-                    let assetSum = 0;
-                    let liabilitySum = 0;
+                    let monthlyNetWorth = Array(12).fill(null);
+                    let categorySums = {
+                        "Bank Accounts": Array(12).fill(null),
+                        "Investments": Array(12).fill(null),
+                        "Properties": Array(12).fill(null),
+                        "Other Assets": Array(12).fill(null),
+                        "Debts": Array(12).fill(null),
+                        "Other Liabilities": Array(12).fill(null)
+                    };
+
                     items.forEach(item => {
+                        let cat = item.category;
+                        if (!categorySums[cat]) categorySums[cat] = Array(12).fill(null);
                         let vals = (item.values && item.values[y]) || Array(12).fill(null);
-                        let v = parseFloat(vals[11]) || 0; // Dec value
-                        if (item.category === "Debts" || item.category === "Other Liabilities") {
-                            liabilitySum += v;
-                        } else {
-                            assetSum += v;
+                        for (let m = 0; m < 12; m++) {
+                            let v = vals[m];
+                            if (v !== null && v !== undefined && v !== "") {
+                                let valNum = parseFloat(v) || 0;
+                                if (categorySums[cat][m] === null) {
+                                    categorySums[cat][m] = 0;
+                                }
+                                categorySums[cat][m] += valNum;
+                            }
                         }
                     });
-                    displayVals.push(assetSum + liabilitySum);
+
+                    for (let m = 0; m < 12; m++) {
+                        let assetsSum = null;
+                        ["Bank Accounts", "Investments", "Properties", "Other Assets"].forEach(catName => {
+                            let val = categorySums[catName][m];
+                            if (val !== null) {
+                                if (assetsSum === null) assetsSum = 0;
+                                assetsSum += val;
+                            }
+                        });
+
+                        let liabilitiesSum = null;
+                        ["Debts", "Other Liabilities"].forEach(catName => {
+                            let val = categorySums[catName][m];
+                            if (val !== null) {
+                                if (liabilitiesSum === null) liabilitiesSum = 0;
+                                liabilitiesSum += val;
+                            }
+                        });
+
+                        if (assetsSum !== null || liabilitiesSum !== null) {
+                            monthlyNetWorth[m] = (assetsSum || 0) + (liabilitiesSum || 0);
+                        }
+                    }
+
+                    // Find latest non-null month index for this year y
+                    let latestIdx = 11;
+                    for (let m = 11; m >= 0; m--) {
+                        if (monthlyNetWorth[m] !== null) {
+                            latestIdx = m;
+                            break;
+                        }
+                    }
+
+                    let yVal = monthlyNetWorth[latestIdx];
+                    displayVals.push(yVal !== null ? yVal : 0);
                     periodLabels.push(String(y));
                 });
             }
