@@ -19402,24 +19402,33 @@
             // Update Month/Year Navigation Label
             document.getElementById("nospend-month-lbl").innerText = `${monthNames[month]} ${year}`;
 
+            // Determine days in the month
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDayIndex = new Date(year, month, 1).getDay(); // Sunday is 0
+
             // Retrieve configuration values
             if (!appState.noSpendGoals) appState.noSpendGoals = {};
             if (appState.noSpendGoals[yearMonthStr] === undefined) {
                 appState.noSpendGoals[yearMonthStr] = 0; // default goal
             }
-            const goalDays = appState.noSpendGoals[yearMonthStr] !== undefined ? Number(appState.noSpendGoals[yearMonthStr]) : 0;
+            let goalDays = appState.noSpendGoals[yearMonthStr] !== undefined ? Number(appState.noSpendGoals[yearMonthStr]) : 0;
+            if (goalDays > daysInMonth) {
+                goalDays = daysInMonth;
+                appState.noSpendGoals[yearMonthStr] = goalDays;
+                saveStateToLocalStorage();
+            }
 
             // Set slider inputs
+            const slider = document.getElementById("nospend-goal-slider");
+            if (slider) {
+                slider.max = daysInMonth;
+                slider.value = goalDays;
+            }
             document.getElementById("nospend-goal-lbl").innerText = `${goalDays} Days`;
             document.getElementById("nospend-slider-val").innerText = goalDays;
-            document.getElementById("nospend-goal-slider").value = goalDays;
 
             const exclusions = appState.noSpendExclusions || [];
             const transactions = getAllTransactions();
-
-            // Determine days in the month
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstDayIndex = new Date(year, month, 1).getDay(); // Sunday is 0
 
             const now = new Date();
             const isCurrentMonth = (now.getFullYear() === year && now.getMonth() === month);
