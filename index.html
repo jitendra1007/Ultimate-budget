@@ -12117,7 +12117,7 @@
                 id: 'config_basic', table: 'config_basic', updatedAt: 0, deleted: false,
                 data: {
                     name: '', currency: '$', initialBalance: 0, budgetingMethod: 'carry-over',
-                    accountStartDate: '', accountStartBalances: {}, accountIcons: {},
+                    accountStartDate: '',
                     annualStartMonth: '', reviewNotifSent: 0, cleared: true,
                     calendarStartOnMonday: true
                 },
@@ -12347,6 +12347,66 @@
                     }
                 }
 
+                // Migration for old config_basic inline accountStartBalances and accountIcons to atomic records
+                const oldBasic = (window.databaseArray || []).find(r => r && r.id === 'config_basic' && !r.deleted);
+                if (oldBasic && oldBasic.data && (oldBasic.data.accountStartBalances || oldBasic.data.accountIcons)) {
+                    const timestamp = Date.now();
+                    const newRecords = [];
+                    const startBalances = oldBasic.data.accountStartBalances || {};
+                    const icons = oldBasic.data.accountIcons || {};
+
+                    Object.keys(startBalances).forEach(accName => {
+                        const id = `start_bal_${accName}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                        const rData = { accountName: accName, balance: Number(startBalances[accName]) || 0 };
+                        newRecords.push({
+                            id,
+                            table: 'account_start_balances',
+                            updatedAt: timestamp,
+                            deleted: false,
+                            data: rData,
+                            updatedKeys: createUpdatedKeys(rData, timestamp)
+                        });
+                    });
+
+                    Object.keys(icons).forEach(accName => {
+                        const id = `acc_icon_${accName}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                        const rData = { accountName: accName, icon: icons[accName] };
+                        newRecords.push({
+                            id,
+                            table: 'account_icons',
+                            updatedAt: timestamp,
+                            deleted: false,
+                            data: rData,
+                            updatedKeys: createUpdatedKeys(rData, timestamp)
+                        });
+                    });
+
+                    // Remove the fields from config_basic data to complete migration
+                    const updatedBasicData = { ...oldBasic.data };
+                    delete updatedBasicData.accountStartBalances;
+                    delete updatedBasicData.accountIcons;
+
+                    window.databaseArray = (window.databaseArray || []).map(r =>
+                        r.id === 'config_basic' ? {
+                            ...r,
+                            data: updatedBasicData,
+                            updatedAt: timestamp,
+                            updatedKeys: createUpdatedKeys(updatedBasicData, timestamp)
+                        } : r
+                    );
+                    window.databaseArray.push(...newRecords);
+
+                    // Persist
+                    if (typeof updateDataState === 'function') {
+                        updateDataState(window.databaseArray, true);
+                    } else {
+                        localStorage.setItem(ULTIMATE_BUDGET_LOCAL_KEY, JSON.stringify(window.databaseArray));
+                    }
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
+                    }
+                }
+
                 appState = {
                     name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
                     accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
@@ -12375,6 +12435,20 @@
                         appState.calendarStartOnMonday = (basic.data.startDayOfWeek === 1);
                     }
                 }
+
+                appState.accountStartBalances = {};
+                activeRecords.filter(r => r.table === 'account_start_balances' && r.data).forEach(r => {
+                    if (r.data.accountName) {
+                        appState.accountStartBalances[r.data.accountName] = Number(r.data.balance) || 0;
+                    }
+                });
+
+                appState.accountIcons = {};
+                activeRecords.filter(r => r.table === 'account_icons' && r.data).forEach(r => {
+                    if (r.data.accountName) {
+                        appState.accountIcons[r.data.accountName] = r.data.icon;
+                    }
+                });
 
                 const fiftyTargets = activeRecords.find(r => r.id === 'config_fifty_targets');
                 if (fiftyTargets && fiftyTargets.data) {
@@ -12563,12 +12637,30 @@
                 initialBalance: appState.initialBalance,
                 budgetingMethod: appState.budgetingMethod,
                 accountStartDate: appState.accountStartDate,
-                accountStartBalances: appState.accountStartBalances,
-                accountIcons: appState.accountIcons,
                 annualStartMonth: appState.annualStartMonth,
                 reviewNotifSent: appState.reviewNotifSent,
                 cleared: appState.cleared,
                 calendarStartOnMonday: appState.calendarStartOnMonday
+            });
+
+            // Upsert individual start balances and account icons for each account
+            const bankAccounts = appState.categories?.bank_accounts || [];
+            const creditCards = appState.categories?.credit_cards || [];
+            const allAccounts = [...bankAccounts, ...creditCards];
+
+            allAccounts.forEach(accName => {
+                const balId = `start_bal_${accName}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const balVal = (appState.accountStartBalances && appState.accountStartBalances[accName] !== undefined)
+                    ? Number(appState.accountStartBalances[accName]) || 0
+                    : 0;
+                upsertEnvelope(balId, 'account_start_balances', { accountName: accName, balance: balVal });
+
+                const iconId = `acc_icon_${accName}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const defaultIcon = creditCards.includes(accName) ? 'credit_card' : 'payments';
+                const iconVal = (appState.accountIcons && appState.accountIcons[accName])
+                    ? appState.accountIcons[accName]
+                    : defaultIcon;
+                upsertEnvelope(iconId, 'account_icons', { accountName: accName, icon: iconVal });
             });
             upsertEnvelope('config_fifty_targets', 'config_fifty_targets', {
                 needsTarget: appState.fiftyNeedsTarget,
