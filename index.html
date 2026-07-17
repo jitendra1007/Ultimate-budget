@@ -12407,6 +12407,50 @@
                     }
                 }
 
+                // Migration for old networth_items inline values to atomic networth_values envelopes
+                const oldNwItems = (window.databaseArray || []).filter(r => r && r.id && r.id.startsWith('nw_') && r.table === 'networth_items' && !r.deleted && r.data && r.data.values);
+                if (oldNwItems.length > 0) {
+                    const timestamp = Date.now();
+                    const newRecords = [];
+                    oldNwItems.forEach(item => {
+                        const itemId = item.id.replace('nw_', '');
+                        const valuesMap = item.data.values || {};
+                        Object.keys(valuesMap).forEach(year => {
+                            const monthlyArr = valuesMap[year];
+                            if (Array.isArray(monthlyArr)) {
+                                monthlyArr.forEach((val, m) => {
+                                    if (val !== null && val !== undefined) {
+                                        const id = `nw_val_${itemId}_${year}_${m}`;
+                                        const rData = { itemId, year: String(year), month: m, value: Number(val) };
+                                        newRecords.push({
+                                            id,
+                                            table: 'networth_values',
+                                            updatedAt: timestamp,
+                                            deleted: false,
+                                            data: rData,
+                                            updatedKeys: createUpdatedKeys(rData, timestamp)
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                        delete item.data.values;
+                        if (item.updatedKeys) delete item.updatedKeys.values;
+                        item.updatedAt = timestamp;
+                    });
+
+                    window.databaseArray.push(...newRecords);
+
+                    if (typeof updateDataState === 'function') {
+                        updateDataState(window.databaseArray, true);
+                    } else {
+                        localStorage.setItem(ULTIMATE_BUDGET_LOCAL_KEY, JSON.stringify(window.databaseArray));
+                    }
+                    if (typeof scheduleCloudSync === 'function') {
+                        scheduleCloudSync();
+                    }
+                }
+
                 appState = {
                     name: "", currency: "$", initialBalance: 0, budgetingMethod: "carry-over",
                     accountStartDate: "", accountStartBalances: {}, accountIcons: {}, annualStartMonth: "",
@@ -12577,7 +12621,21 @@
                     .map(r => JSON.parse(JSON.stringify({ ...r.data, id: r.id ? r.id.replace('debt_', '') : '' })));
 
                 appState.netWorthData.items = activeRecords.filter(r => r && r.table === 'networth_items' && r.data)
-                    .map(r => JSON.parse(JSON.stringify({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data })));
+                    .map(r => {
+                        const itemData = JSON.parse(JSON.stringify({ id: r.id ? r.id.replace('nw_', '') : '', ...r.data }));
+                        itemData.values = {};
+                        return itemData;
+                    });
+
+                activeRecords.filter(r => r && r.table === 'networth_values' && r.data).forEach(r => {
+                    const { itemId, year, month, value } = r.data;
+                    const item = appState.netWorthData.items.find(i => i.id === itemId || `nw_${i.id}` === itemId || i.id === `nw_${itemId}`);
+                    if (item) {
+                        if (!item.values) item.values = {};
+                        if (!item.values[year]) item.values[year] = Array(12).fill(null);
+                        item.values[year][month] = (value !== undefined && value !== null) ? Number(value) : null;
+                    }
+                });
 
                 if (typeof calendarState !== 'undefined') {
                     calendarState.startOnMonday = appState.calendarStartOnMonday !== undefined ? appState.calendarStartOnMonday : true;
@@ -12768,7 +12826,27 @@
                 const id = `nw_${item.id}`;
                 const data = { ...item };
                 delete data.id;
+                delete data.values;
                 upsertEnvelope(id, 'networth_items', data);
+
+                if (item.values) {
+                    Object.keys(item.values).forEach(year => {
+                        const monthlyArr = item.values[year];
+                        if (Array.isArray(monthlyArr)) {
+                            monthlyArr.forEach((val, m) => {
+                                if (val !== null && val !== undefined) {
+                                    const valId = `nw_val_${item.id}_${year}_${m}`;
+                                    upsertEnvelope(valId, 'networth_values', {
+                                        itemId: item.id,
+                                        year: String(year),
+                                        month: m,
+                                        value: Number(val)
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
             });
 
             const newDb = [];
