@@ -8512,18 +8512,21 @@
             border-color: #fecaca;
             cursor: pointer;
         }
+
+        .sync-status-badge.hidden-by-sidebar {
+            display: none !important;
+        }
     </style>
 
 <body class="bg-[#f0f3ff] font-body-default text-on-surface">
     <!-- Mobile Top Bar -->
     <header
-        class="lg:hidden fixed top-0 w-full z-50 flex justify-start items-center gap-3 px-4 py-3 bg-surface shadow-sm mobile-header">
+        class="lg:hidden fixed top-0 w-full z-40 flex justify-between items-center px-4 py-3 bg-surface shadow-sm mobile-header">
         <button
             class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-slate-100 rounded-lg mobile-toggle-btn"
             id="mobile-menu-toggle">menu</button>
-        <div class="flex items-center gap-1">
-            <span class="font-display-lg text-[22px] font-black text-[#4f46e5]">Budget</span>
-            <span class="font-display-lg text-[22px] font-black text-black">Planner</span>
+        <div id="mobileSyncStatusIndicator" class="sync-status-badge sync-status" style="display: none;">
+            <!-- Updated dynamically by JS -->
         </div>
     </header>
 
@@ -13298,15 +13301,21 @@
         // Mobile Menu Logic
         const mobileToggle = document.getElementById('mobile-menu-toggle');
         const sidebar = document.getElementById('sidebar');
+        const mobileSyncBadge = document.getElementById('mobileSyncStatusIndicator');
 
         mobileToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             sidebar.classList.toggle('hidden');
-            sidebar.classList.toggle('flex');
-            sidebar.classList.add('w-sidebar-expanded');
-            sidebar.classList.remove('sidebar-collapsed');
-            sidebar.classList.add('z-50');
-            sidebar.classList.add('shadow-2xl');
+            const isOpen = !sidebar.classList.contains('hidden');
+            sidebar.classList.toggle('flex', isOpen);
+            if (isOpen) {
+                sidebar.classList.add('w-sidebar-expanded', 'z-50', 'shadow-2xl');
+                sidebar.classList.remove('sidebar-collapsed');
+                if (mobileSyncBadge) mobileSyncBadge.classList.add('hidden-by-sidebar');
+            } else {
+                sidebar.classList.remove('flex', 'z-50', 'shadow-2xl');
+                if (mobileSyncBadge) mobileSyncBadge.classList.remove('hidden-by-sidebar');
+            }
         });
 
         // Close sidebar on mobile when clicking outside
@@ -13316,6 +13325,7 @@
                     if (!sidebar.contains(event.target) && !mobileToggle.contains(event.target)) {
                         sidebar.classList.add('hidden');
                         sidebar.classList.remove('flex', 'z-50', 'shadow-2xl');
+                        if (mobileSyncBadge) mobileSyncBadge.classList.remove('hidden-by-sidebar');
                     }
                 }
             }
@@ -13489,6 +13499,8 @@
                 const sidebar = document.getElementById('sidebar');
                 sidebar.classList.add('hidden');
                 sidebar.classList.remove('flex', 'z-50', 'shadow-2xl');
+                const mobileSyncBadge = document.getElementById('mobileSyncStatusIndicator');
+                if (mobileSyncBadge) mobileSyncBadge.classList.remove('hidden-by-sidebar');
             }
 
             // Re-render table if switching to transactions
