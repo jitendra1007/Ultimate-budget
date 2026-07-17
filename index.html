@@ -8516,6 +8516,15 @@
         .sync-status-badge.hidden-by-sidebar {
             display: none !important;
         }
+
+        @media (max-width: 1023px) {
+            main .sync-status-badge {
+                display: none !important;
+            }
+            #main-content {
+                overflow-x: hidden;
+            }
+        }
     </style>
 
 <body class="bg-[#f0f3ff] font-body-default text-on-surface">
@@ -10216,7 +10225,7 @@
                         <p class="text-on-surface-variant font-medium">Track your discipline and savings for the month
                         </p>
                     </div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 flex-wrap max-w-full">
                         <div class="flex items-center bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm"
                             style="background: white;">
                             <button
