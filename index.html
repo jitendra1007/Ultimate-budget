@@ -21819,6 +21819,28 @@
             renderNwLedger();
         };
 
+        // Helper to find latest non-null/non-empty month index for a given values array
+        function getLatestIdx(vals) {
+            if (!vals) return 11;
+            for (let m = 11; m >= 0; m--) {
+                if (vals[m] !== null && vals[m] !== undefined && vals[m] !== "") {
+                    return m;
+                }
+            }
+            return 11; // fallback to December
+        }
+
+        // Helper to find first non-null/non-empty month index for a given values array
+        function getFirstIdx(vals) {
+            if (!vals) return 0;
+            for (let m = 0; m < 12; m++) {
+                if (vals[m] !== null && vals[m] !== undefined && vals[m] !== "") {
+                    return m;
+                }
+            }
+            return 0; // fallback to January
+        }
+
         // Formats currency to e.g. $1,250,000 or -$231,700 (returns blank if value is null/undefined)
         function formatNwVal(val, forceNoDecimals = false) {
             if (val === null || val === undefined || val === "") return "";
@@ -22152,36 +22174,28 @@
                 categorySums: categorySums
             };
 
-            // 1. Find latest non-null month index for KPIs
-            let latestIdx = 11;
-            for (let m = 11; m >= 0; m--) {
-                if (monthlyNetWorth[m] !== null) {
-                    latestIdx = m;
-                    break;
-                }
-            }
+            // 1. Find latest and first non-null month indices independently for Assets, Liabilities, and Net Worth
+            let assetsLatestIdx = getLatestIdx(monthlyAssets);
+            let assetsFirstIdx = getFirstIdx(monthlyAssets);
 
-            // Find first non-null month index
-            let firstIdx = 0;
-            for (let m = 0; m < 12; m++) {
-                if (monthlyNetWorth[m] !== null) {
-                    firstIdx = m;
-                    break;
-                }
-            }
+            let liabLatestIdx = getLatestIdx(monthlyLiabilities);
+            let liabFirstIdx = getFirstIdx(monthlyLiabilities);
 
-            let currentAssets = monthlyAssets[latestIdx];
-            let currentLiabilities = monthlyLiabilities[latestIdx] !== null ? Math.abs(monthlyLiabilities[latestIdx]) : null;
-            let currentNetWorth = monthlyNetWorth[latestIdx];
+            let nwLatestIdx = getLatestIdx(monthlyNetWorth);
+            let nwFirstIdx = getFirstIdx(monthlyNetWorth);
+
+            let currentAssets = monthlyAssets[assetsLatestIdx];
+            let currentLiabilities = monthlyLiabilities[liabLatestIdx] !== null ? Math.abs(monthlyLiabilities[liabLatestIdx]) : null;
+            let currentNetWorth = monthlyNetWorth[nwLatestIdx];
 
             document.getElementById("nw-kpi-assets").textContent = formatNwVal(currentAssets, true);
             document.getElementById("nw-kpi-liabilities").textContent = formatNwVal(currentLiabilities, true);
             document.getElementById("nw-kpi-networth").textContent = formatNwVal(currentNetWorth, true);
 
-            // Calculate percentage changes vs first non-null month of the active year
-            let janAssets = monthlyAssets[firstIdx];
-            let janLiabilities = monthlyLiabilities[firstIdx] !== null ? Math.abs(monthlyLiabilities[firstIdx]) : null;
-            let janNetWorth = monthlyNetWorth[firstIdx];
+            // Calculate percentage changes vs first non-null month of the active year for each metric independently
+            let janAssets = monthlyAssets[assetsFirstIdx];
+            let janLiabilities = monthlyLiabilities[liabFirstIdx] !== null ? Math.abs(monthlyLiabilities[liabFirstIdx]) : null;
+            let janNetWorth = monthlyNetWorth[nwFirstIdx];
 
             updateNwKpiChange("nw-change-assets", currentAssets, janAssets, false);
             updateNwKpiChange("nw-change-liabilities", currentLiabilities, janLiabilities, true);
@@ -22537,23 +22551,17 @@
         window.renderNwDonutChart = function () {
             if (!window.nwCalculatedData) return;
             let sums = window.nwCalculatedData.categorySums;
-            let netWorth = window.nwCalculatedData.netWorth;
-
-            let latestIdx = 11;
-            for (let m = 11; m >= 0; m--) {
-                if (netWorth[m] !== null) {
-                    latestIdx = m;
-                    break;
-                }
-            }
+            let assets = window.nwCalculatedData.assets;
+            let liabilities = window.nwCalculatedData.liabilities;
 
             let dataArray = [];
 
             if (nwActiveDistributionType === "ASSET") {
-                let bankSum = sums["Bank Accounts"][latestIdx] || 0;
-                let invSum = sums["Investments"][latestIdx] || 0;
-                let propSum = sums["Properties"][latestIdx] || 0;
-                let otherSum = sums["Other Assets"][latestIdx] || 0;
+                let assetsIdx = getLatestIdx(assets);
+                let bankSum = sums["Bank Accounts"][assetsIdx] || 0;
+                let invSum = sums["Investments"][assetsIdx] || 0;
+                let propSum = sums["Properties"][assetsIdx] || 0;
+                let otherSum = sums["Other Assets"][assetsIdx] || 0;
 
                 dataArray = [
                     { name: "Bank Accounts", value: bankSum, color: "#3b82f6" },
@@ -22562,8 +22570,9 @@
                     { name: "Others", value: otherSum, color: "#10b981" }
                 ];
             } else {
-                let debtSum = Math.abs(sums["Debts"][latestIdx] || 0);
-                let otherLiabSum = Math.abs(sums["Other Liabilities"][latestIdx] || 0);
+                let liabIdx = getLatestIdx(liabilities);
+                let debtSum = Math.abs(sums["Debts"][liabIdx] || 0);
+                let otherLiabSum = Math.abs(sums["Other Liabilities"][liabIdx] || 0);
 
                 dataArray = [
                     { name: "Debts", value: debtSum, color: "#f59e0b" },
@@ -22635,26 +22644,21 @@
         function updateNwDonutCenterText() {
             if (!window.nwCalculatedData) return;
             let sums = window.nwCalculatedData.categorySums;
-            let netWorth = window.nwCalculatedData.netWorth;
-
-            let latestIdx = 11;
-            for (let m = 11; m >= 0; m--) {
-                if (netWorth[m] !== null) {
-                    latestIdx = m;
-                    break;
-                }
-            }
+            let assets = window.nwCalculatedData.assets;
+            let liabilities = window.nwCalculatedData.liabilities;
 
             let total = 0;
             if (nwActiveDistributionType === "ASSET") {
-                total = (sums["Bank Accounts"][latestIdx] || 0) +
-                    (sums["Investments"][latestIdx] || 0) +
-                    (sums["Properties"][latestIdx] || 0) +
-                    (sums["Other Assets"][latestIdx] || 0);
+                let assetsIdx = getLatestIdx(assets);
+                total = (sums["Bank Accounts"][assetsIdx] || 0) +
+                    (sums["Investments"][assetsIdx] || 0) +
+                    (sums["Properties"][assetsIdx] || 0) +
+                    (sums["Other Assets"][assetsIdx] || 0);
                 document.getElementById("nw-dist-center-label").textContent = "Assets";
             } else {
-                total = Math.abs((sums["Debts"][latestIdx] || 0) +
-                    (sums["Other Liabilities"][latestIdx] || 0));
+                let liabIdx = getLatestIdx(liabilities);
+                total = Math.abs((sums["Debts"][liabIdx] || 0) +
+                    (sums["Other Liabilities"][liabIdx] || 0));
                 document.getElementById("nw-dist-center-label").textContent = "Liabilities";
             }
             document.getElementById("nw-dist-center-value").textContent = formatNwShorthand(total);
@@ -22696,16 +22700,6 @@
             let activeYear = appState.netWorthData.activeYear || 2026;
             let calc = window.nwCalculatedData;
             let items = appState.netWorthData.items || [];
-
-            // Helper to find latest non-null/non-empty month index for a given values array
-            function getLatestIdx(vals) {
-                for (let m = 11; m >= 0; m--) {
-                    if (vals[m] !== null && vals[m] !== undefined && vals[m] !== "") {
-                        return m;
-                    }
-                }
-                return 11; // fallback to December
-            }
 
             let nwLatestIdx = getLatestIdx(calc.netWorth);
 
